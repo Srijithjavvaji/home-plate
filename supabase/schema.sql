@@ -29,6 +29,8 @@ create table if not exists public.sellers (
   state text not null default 'Telangana',
   pincode text not null,
   phone text not null,
+  latitude numeric(10, 7),
+  longitude numeric(10, 7),
   fssai_number text,
   banner_url text,
   logo_url text,
@@ -51,6 +53,8 @@ create table if not exists public.addresses (
   state text not null,
   pincode text not null,
   phone text not null,
+  latitude numeric(10, 7),
+  longitude numeric(10, 7),
   is_default boolean default false,
   created_at timestamptz default now()
 );
@@ -220,6 +224,49 @@ create table if not exists public.notifications (
   created_at timestamptz default now()
 );
 
+-- 15. DELIVERIES (External Logistics Partner Dispatches e.g., Shadowfax)
+create table if not exists public.deliveries (
+  id uuid primary key default uuid_generate_v4(),
+  order_id uuid references public.orders(id) on delete cascade not null unique,
+  provider text not null default 'shadowfax',
+  tracking_id text,
+  status text check (status in (
+    'pending',
+    'serviceability_failed',
+    'requested',
+    'assigned',
+    'arrived_pickup',
+    'picked_up',
+    'out_for_delivery',
+    'arrived_customer',
+    'delivered',
+    'cancelled',
+    'failed'
+  )) default 'pending',
+  rider_name text,
+  rider_phone text,
+  rider_lat numeric(10, 7),
+  rider_lng numeric(10, 7),
+  pickup_address text not null,
+  pickup_pincode text not null,
+  pickup_lat numeric(10, 7),
+  pickup_lng numeric(10, 7),
+  drop_address text not null,
+  drop_pincode text not null,
+  drop_lat numeric(10, 7),
+  drop_lng numeric(10, 7),
+  estimated_pickup_at timestamptz,
+  estimated_delivery_at timestamptz,
+  actual_pickup_at timestamptz,
+  actual_delivery_at timestamptz,
+  status_history jsonb default '[]'::jsonb,
+  tracking_url text,
+  raw_response jsonb,
+  failure_reason text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- INDEXES FOR PERFORMANCE
 create index if not exists idx_foods_seller on public.foods(seller_id);
 create index if not exists idx_foods_category on public.foods(category_id);
@@ -230,6 +277,9 @@ create index if not exists idx_orders_status on public.orders(status);
 create index if not exists idx_order_items_order on public.order_items(order_id);
 create index if not exists idx_cart_user on public.cart_items(user_id);
 create index if not exists idx_reviews_food on public.reviews(food_id);
+create index if not exists idx_deliveries_order on public.deliveries(order_id);
+create index if not exists idx_deliveries_status on public.deliveries(status);
+create index if not exists idx_deliveries_tracking on public.deliveries(tracking_id);
 
 -- TRIGGER FOR NEW USER CREATION IN PROFILES
 create or replace function public.handle_new_user()
@@ -266,6 +316,7 @@ alter table public.reviews enable row level security;
 alter table public.wishlists enable row level security;
 alter table public.coupons enable row level security;
 alter table public.notifications enable row level security;
+alter table public.deliveries enable row level security;
 
 -- Public read policies
 create policy "Allow public read on active categories" on public.categories for select using (is_active = true);
@@ -312,5 +363,22 @@ create policy "Admins have full access to foods" on public.foods for all using (
   exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'admin')
 );
 create policy "Admins have full access to orders" on public.orders for all using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'admin')
+);
+
+-- Deliveries access policies
+create policy "Customers can view deliveries for own orders" on public.deliveries for select using (
+  exists (select 1 from public.orders where orders.id = deliveries.order_id and orders.customer_id = auth.uid())
+);
+
+create policy "Sellers can view deliveries for received orders" on public.deliveries for select using (
+  exists (
+    select 1 from public.orders
+    join public.sellers on sellers.id = orders.seller_id
+    where orders.id = deliveries.order_id and sellers.user_id = auth.uid()
+  )
+);
+
+create policy "Admins have full access to deliveries" on public.deliveries for all using (
   exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'admin')
 );

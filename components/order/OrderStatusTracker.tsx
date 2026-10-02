@@ -1,10 +1,11 @@
 import React from "react";
-import { CheckCircle2, Clock, ChefHat, PackageCheck, Bike, Home, AlertCircle } from "lucide-react";
-import { OrderStatus } from "@/lib/supabase/types";
+import { CheckCircle2, Clock, ChefHat, PackageCheck, Bike, Home, AlertCircle, ShieldCheck } from "lucide-react";
+import { OrderStatus, Delivery } from "@/lib/supabase/types";
 
 interface OrderStatusTrackerProps {
   status: OrderStatus;
   estimatedDelivery?: string;
+  delivery?: Delivery | null;
 }
 
 const STEPS = [
@@ -18,6 +19,7 @@ const STEPS = [
 export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
   status,
   estimatedDelivery,
+  delivery,
 }) => {
   if (status === "cancelled") {
     return (
@@ -50,19 +52,32 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+    <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-gray-100">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-            Live Tracker
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+              Live Progress
+            </span>
+            {delivery?.provider && (
+              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" />
+                <span>{delivery.provider.toUpperCase()} Logistics</span>
+              </span>
+            )}
+          </div>
           <h3 className="text-lg font-bold text-gray-900 mt-2">
             {STEPS[currentStepIndex]?.desc || "Processing your order"}
           </h3>
+          {delivery?.rider_name && (
+            <p className="text-xs text-purple-700 font-semibold mt-1">
+              Rider: {delivery.rider_name} {delivery.rider_phone ? `(${delivery.rider_phone})` : ""}
+            </p>
+          )}
         </div>
         {estimatedDelivery && (
-          <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-xl">
+          <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-100">
             <Clock className="w-4 h-4 text-emerald-600" />
             <span>
               Estimated arrival:{" "}

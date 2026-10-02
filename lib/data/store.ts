@@ -1,5 +1,5 @@
-import { Category, Food, Order, OrderStatus, Profile, Review, Seller, Coupon, PaymentMethod } from "../supabase/types";
-import { INITIAL_CATEGORIES, INITIAL_FOODS, INITIAL_ORDERS, INITIAL_REVIEWS, INITIAL_SELLERS, INITIAL_COUPONS } from "./mock-data";
+import { Category, Food, Order, OrderStatus, Profile, Review, Seller, Coupon, PaymentMethod, Delivery, DeliveryStatus } from "../supabase/types";
+import { INITIAL_CATEGORIES, INITIAL_FOODS, INITIAL_ORDERS, INITIAL_REVIEWS, INITIAL_SELLERS, INITIAL_COUPONS, INITIAL_DELIVERIES } from "./mock-data";
 import { isSupabaseConfigured, createClient } from "../supabase/client";
 
 // In-memory runtime store for development & mock fallback
@@ -8,6 +8,7 @@ class InMemoryStore {
   sellers: Seller[] = [...INITIAL_SELLERS];
   foods: Food[] = [...INITIAL_FOODS];
   orders: Order[] = [...INITIAL_ORDERS];
+  deliveries: Delivery[] = [...INITIAL_DELIVERIES];
   reviews: Review[] = [...INITIAL_REVIEWS];
   coupons: Coupon[] = [...INITIAL_COUPONS];
   profiles: Profile[] = [
@@ -173,15 +174,41 @@ class InMemoryStore {
 
   // ORDERS
   async getOrders(): Promise<Order[]> {
-    return this.orders;
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*, seller:sellers(*), delivery:deliveries(*)")
+          .order("created_at", { ascending: false });
+        if (!error && data && data.length > 0) return data as Order[];
+      }
+    }
+    return this.orders.map((ord) => ({
+      ...ord,
+      seller: this.sellers.find((s) => s.id === ord.seller_id),
+      delivery: this.deliveries.find((d) => d.order_id === ord.id),
+    }));
   }
 
   async getOrderById(id: string): Promise<Order | null> {
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*, seller:sellers(*), items:order_items(*), delivery:deliveries(*)")
+          .or(`id.eq.${id},order_number.eq.${id}`)
+          .single();
+        if (!error && data) return data as Order;
+      }
+    }
     const ord = this.orders.find((o) => o.id === id || o.order_number === id);
     if (!ord) return null;
     return {
       ...ord,
       seller: this.sellers.find((s) => s.id === ord.seller_id),
+      delivery: this.deliveries.find((d) => d.order_id === ord.id),
     };
   }
 
@@ -264,6 +291,89 @@ class InMemoryStore {
     }
     ord.updated_at = new Date().toISOString();
     return ord;
+  }
+
+  // DELIVERIES
+  async getDeliveries(): Promise<Delivery[]> {
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("deliveries")
+          .select("*, order:orders(*)")
+          .order("created_at", { ascending: false });
+        if (!error && data && data.length > 0) return data as Delivery[];
+      }
+    }
+    return this.deliveries.map((del) => ({
+      ...del,
+      order: this.orders.find((o) => o.id === del.order_id),
+    }));
+  }
+
+  async getDeliveryByOrderId(orderId: string): Promise<Delivery | null> {
+    const list = await this.getDeliveries();
+    return list.find((d) => d.order_id === orderId) || null;
+  }
+
+  async getDeliveryById(id: string): Promise<Delivery | null> {
+    const list = await this.getDeliveries();
+    return list.find((d) => d.id === id || d.tracking_id === id) || null;
+  }
+
+  async createDelivery(deliveryData: Omit<Delivery, "id" | "created_at">): Promise<Delivery> {
+    const newDelivery: Delivery = {
+      ...deliveryData,
+      id: `del_${Date.now()}`,
+      created_at: new Date().toISOString(),
+    };
+
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      if (supabase) {
+        await supabase.from("deliveries").insert(newDelivery);
+      }
+    }
+
+    const existingIndex = this.deliveries.findIndex((d) => d.order_id === deliveryData.order_id);
+    if (existingIndex >= 0) {
+      this.deliveries[existingIndex] = newDelivery;
+    } else {
+      this.deliveries.unshift(newDelivery);
+    }
+
+    return newDelivery;
+  }
+
+  async updateDelivery(
+    deliveryIdOrOrderId: string,
+    updates: Partial<Delivery>
+  ): Promise<Delivery | null> {
+    const idx = this.deliveries.findIndex(
+      (d) =>
+        d.id === deliveryIdOrOrderId ||
+        d.order_id === deliveryIdOrOrderId ||
+        d.tracking_id === deliveryIdOrOrderId
+    );
+    if (idx === -1) return null;
+
+    this.deliveries[idx] = {
+      ...this.deliveries[idx],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      if (supabase) {
+        await supabase
+          .from("deliveries")
+          .update(updates)
+          .eq("id", this.deliveries[idx].id);
+      }
+    }
+
+    return this.deliveries[idx];
   }
 
   // COUPONS

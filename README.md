@@ -1,24 +1,25 @@
 # 🍽️ HOME PLATE
 > **“Fresh Homemade Food, Delivered to Your Doorstep”**
 
-Home Plate is a full-stack homemade food delivery platform connecting neighborhood food lovers with verified home cooks, mothers, and small artisanal food businesses. Built with Next.js 15+ (App Router), TypeScript, Tailwind CSS, Supabase PostgreSQL & Auth, and Razorpay Payment Gateway.
+Home Plate is a full-stack homemade food delivery platform connecting neighborhood food lovers with verified home cooks, mothers, and artisanal food businesses. Built with Next.js 15+ (App Router), TypeScript, Tailwind CSS, Supabase PostgreSQL & Auth, Razorpay Payment Gateway, and official **Shadowfax Hyperlocal Logistics Integration**.
 
 ---
 
 ## 📋 Table of Contents
-1. [Project Overview](#project-overview)
-2. [Key Features by User Role](#key-features-by-user-role)
-3. [Technology Stack](#technology-stack)
-4. [Project Structure](#project-structure)
-5. [Prerequisites & Installation](#prerequisites--installation)
-6. [Supabase Setup & Database Schema](#supabase-setup--database-schema)
-7. [Environment Variables Configuration](#environment-variables-configuration)
-8. [Razorpay Payment Gateway Setup (Test & Live)](#razorpay-payment-gateway-setup)
-9. [Local Development](#local-development)
-10. [Building for Production (`npm run build`)](#building-for-production)
-11. [GitHub Deployment & Vercel Hosting](#github-deployment--vercel-hosting)
-12. [Razorpay Webhook Configuration](#razorpay-webhook-configuration)
-13. [Security Architecture & Validation](#security-architecture--validation)
+1. [Project Overview](#1-project-overview)
+2. [Key Features by User Role](#2-key-features-by-user-role)
+3. [Technology Stack](#3-technology-stack)
+4. [Project Structure](#4-project-structure)
+5. [Real External Delivery Agency Integration (Shadowfax)](#5-real-external-delivery-agency-integration-shadowfax)
+6. [Supabase Setup & Database Schema](#6-supabase-setup--database-schema)
+7. [Environment Variables Configuration](#7-environment-variables-configuration)
+8. [Razorpay Payment Gateway Setup (Test & Live)](#8-razorpay-payment-gateway-setup)
+9. [Shadowfax Logistics Onboarding (Staging & Production)](#9-shadowfax-logistics-onboarding)
+10. [Local Development](#10-local-development)
+11. [Building for Production (`npm run build`)](#11-building-for-production)
+12. [GitHub Deployment & Vercel Hosting](#12-github-deployment--vercel-hosting)
+13. [Webhooks Configuration (Razorpay & Shadowfax)](#13-webhooks-configuration)
+14. [Security & Workflow Boundaries](#14-security--workflow-boundaries)
 
 ---
 
@@ -26,30 +27,32 @@ Home Plate is a full-stack homemade food delivery platform connecting neighborho
 
 Home Plate solves the problem of commercialized, unhealthy restaurant delivery by providing access to authentic home-cooked delicacies—from sun-cured Andhra Avakaya pickles and plate idlis doused in gunpowder ghee podi to slow-cooked earthen claypot biryanis and pure cow ghee halwas.
 
-The platform provides a 3-sided ecosystem:
-- **Customers**: Discover authentic neighborhood cooks, filter by diet (pure veg/non-veg), order meals, pay via Razorpay or COD, and track cooking & delivery progress with a live visual tracker.
-- **Home Cooks / Sellers**: Register their kitchen, manage daily food menus, set portion pricing, accept/reject incoming orders, update live preparation steps, and track net earnings (85% payout) with weekly bank settlements.
-- **Administrators**: Review and approve/reject new kitchen applications, manage user roles, feature recipes on the homepage, oversee platform-wide orders, and manage food categories.
+The platform provides a complete 3-sided ecosystem:
+- **Customers**: Discover authentic neighborhood cooks, filter by diet (pure veg/non-veg), order meals, pay via Razorpay or COD, and track cooking & delivery progress with a live interactive route map.
+- **Home Cooks / Sellers**: Register their kitchen, manage daily food menus, set portion pricing, accept/reject incoming orders, update live cooking progress, mark food packed & ready, and trigger automated courier dispatch.
+- **Administrators**: Review and approve/reject new kitchen applications, manage user roles, oversee platform orders, inspect platform statistics, and supervise external courier deliveries across 11 detailed statuses.
 
 ---
 
 ## 2. Key Features by User Role
 
 ### 🥗 Customer Features
-- **Landing Page**: Original green/white visual identity, hero showcase, category pills, top cook spotlights, how it works, customer testimonials, and cook onboarding CTA.
+- **Landing Page**: Forest green & warm amber visual identity, hero showcase, category pills, top cook spotlights, how it works, customer testimonials, and cook onboarding CTA.
 - **Discovery & Search**: Real-time multi-criteria filtering across names, ingredients, categories, dietary flags (Pure Veg toggle), and sorting (Price, Rating, Prep time).
 - **Food Details Page**: High-resolution imagery, portion information, full ingredient transparency, allergens, cook profile card, rating badge, and customer review submission.
 - **Cart & Secure Pricing**: Dynamic cart drawer and page with server-calculated subtotal, delivery fee calculation (free above ₹500 or with coupons), and coupon code system (`WELCOME50`, `HOMEPLATE10`, `FREESHIP`).
 - **Checkout & Multi-Payment**: Supports Razorpay Payment Gateway (UPI, Cards, NetBanking, Wallets) and Cash on Delivery (COD).
-- **Live Order Tracking**: Visual 5-stage progress tracker (Order Confirmed → Kitchen Preparing → Packed Fresh → Out for Delivery → Delivered).
-- **Profile & Addresses**: Saved delivery locations (Home, Work, Other) with instant add/delete address modal.
+- **Live Order & Route Tracking**: Visual progress tracker and interactive route map displaying pickup point, drop point, assigned rider, and estimated arrival.
+- **Profile & Addresses**: Saved delivery locations (Home, Work, Other) with instant add/delete address modal and geographic coordinates support.
 - **Wishlist**: 1-click favorite saving with quick cart additions.
 
 ### 👩‍🍳 Home Cook / Seller Features
 - **Kitchen Onboarding**: Dedicated application workflow with FSSAI registration input, culinary bio, address, and pending admin approval enforcement.
 - **Seller Portal**: Accessible via `/seller/dashboard`.
 - **Menu Management**: Add, edit, and delete homemade dishes with portion information, preparation time, and instant In Stock / Sold Out stock toggling.
-- **Live Kitchen Order Desk**: Accept orders, reject orders, and progress orders from `Preparing` to `Ready for Pickup`, `Out for Delivery`, and `Delivered`.
+- **Live Kitchen Order Desk**: Accept orders, start cooking (`preparing`), and mark food ready (`ready_for_pickup`).
+- **Automated Courier Dispatch**: Marking an order ready for pickup automatically checks serviceability and dispatches the delivery request to Shadowfax.
+- **Workflow Boundary Enforcement**: Sellers cannot falsely mark an order as "delivered". Courier handoff and delivery completion are verified exclusively via the official logistics provider callback.
 - **Earnings & Financial Analytics**: Gross sales analytics, 15% platform fee deduction, 85% net cook payout calculation, bank settlement records, and early payout request triggers.
 
 ### 🛡️ Administrator Features
@@ -57,8 +60,9 @@ The platform provides a 3-sided ecosystem:
 - **Platform Analytics**: Total revenue (GMV), total orders, verified cooks, published foods, registered users, and pending approval alerts.
 - **Seller Verification Queue**: Review kitchen applications, check hygiene and FSSAI numbers, and execute 1-click Approve or Reject actions.
 - **User Role Management**: Search all user accounts and switch permissions between Customer, Home Cook, and Admin.
+- **Logistics Oversight (`/admin/deliveries`)**: Complete delivery management screen with 11 granular status filters, KPI cards, real-time partner sync, and delivery inspection modal.
 - **Food Catalog Moderation**: Feature dishes on the homepage or delete non-compliant items.
-- **Category Control**: Create, edit, and manage food categories (Breakfast, Meals, Pickles & Podis, Sweets, Healthy & Millet, Regional Specialities).
+- **Category Control**: Create, edit, and manage food categories.
 
 ---
 
@@ -66,11 +70,12 @@ The platform provides a 3-sided ecosystem:
 
 - **Framework**: Next.js 15+ (App Router)
 - **Language**: TypeScript 5.7+
-- **Styling**: Tailwind CSS with custom Forest Green (`#16a34a`, `#14532d`) & Warm Amber color palette
+- **Styling**: Tailwind CSS with custom Forest Green (`#16a34a`, `#14532d`) & Warm Amber palette
 - **Icons**: Lucide React
 - **Validation**: Zod
 - **Database & Auth**: Supabase PostgreSQL with Row Level Security (RLS) & Supabase Auth (`@supabase/ssr`, `@supabase/supabase-js`)
 - **Payments**: Razorpay Node SDK (`razorpay`) with server-side HMAC-SHA256 signature verification & Webhook processing
+- **Logistics & Delivery**: Official Shadowfax Hyperlocal APIs with multi-provider abstraction layer, automated dispatch, live tracking, and webhook synchronization
 - **Deployment Target**: Vercel & GitHub
 
 ---
@@ -93,7 +98,7 @@ home-plate/
 │   │   ├── checkout/page.tsx            # Razorpay & COD payment checkout
 │   │   ├── order-success/page.tsx       # Confirmation & payment verification
 │   │   ├── orders/page.tsx              # Order history
-│   │   ├── orders/[id]/page.tsx         # Live visual order tracking
+│   │   ├── orders/[id]/page.tsx         # Live visual order tracking & delivery map
 │   │   ├── profile/page.tsx             # Saved delivery addresses & profile
 │   │   ├── wishlist/page.tsx            # Saved favorite dishes
 │   │   └── become-a-seller/page.tsx     # Home cook onboarding application
@@ -101,7 +106,7 @@ home-plate/
 │   │   ├── layout.tsx                   # Seller portal shell & navigation
 │   │   ├── dashboard/page.tsx           # Revenue metrics & active orders
 │   │   ├── foods/page.tsx               # Dish catalog, price & stock management
-│   │   ├── orders/page.tsx              # Live kitchen order processing
+│   │   ├── orders/page.tsx              # Live kitchen order desk (Shadowfax dispatch)
 │   │   └── earnings/page.tsx            # Payouts, 85% cook share, bank records
 │   ├── admin/
 │   │   ├── layout.tsx                   # Admin control center shell
@@ -110,8 +115,16 @@ home-plate/
 │   │   ├── sellers/page.tsx             # Kitchen approvals & FSSAI verification
 │   │   ├── foods/page.tsx               # Food catalog moderation & feature toggle
 │   │   ├── orders/page.tsx              # All platform orders oversight
+│   │   ├── deliveries/page.tsx          # Logistics oversight (11 status filters)
 │   │   └── categories/page.tsx          # Food categories management
 │   ├── api/
+│   │   ├── delivery/
+│   │   │   ├── serviceability/route.ts  # Serviceability check between PIN codes
+│   │   │   ├── create/route.ts          # Server-side dispatch to Shadowfax
+│   │   │   ├── status/route.ts          # Live tracking synchronization
+│   │   │   ├── cancel/route.ts          # External delivery cancellation
+│   │   │   └── shadowfax/
+│   │   │       └── webhook/route.ts     # Official Shadowfax status webhook
 │   │   ├── payments/razorpay/
 │   │   │   ├── create-order/route.ts    # Secure server order creation
 │   │   │   ├── verify/route.ts          # Server HMAC-SHA256 signature verification
@@ -125,9 +138,14 @@ home-plate/
 │   ├── ui/                              # Button, Input, Modal, Badge, Skeleton, Toast
 │   ├── layout/                          # Navbar, Footer, SellerNav, AdminNav
 │   ├── food/                            # FoodCard, VegBadge
-│   ├── order/                           # OrderStatusTracker
+│   ├── order/                           # OrderStatusTracker, DeliveryTrackingMap
 │   └── home/                            # Hero, Categories, PopularFood, TopCooks, etc.
 ├── lib/
+│   ├── delivery/                        # Multi-provider logistics abstraction
+│   │   ├── types.ts                     # DeliveryStatus, interfaces, contracts
+│   │   ├── shadowfax.ts                 # Official Shadowfax Hyperlocal API client
+│   │   └── provider.ts                  # Provider factory pattern
+│   ├── notifications/                   # Multi-channel notification dispatch
 │   ├── supabase/                        # Browser, Server client & TypeScript types
 │   ├── data/                            # Resilient store & sample seed datasets
 │   ├── context/                         # Auth, Cart, Wishlist & Toast contexts
@@ -135,80 +153,123 @@ home-plate/
 │   ├── utils.ts                         # Currency formatting (₹), date & status helpers
 │   └── validations.ts                   # Zod schemas
 ├── supabase/
-│   ├── schema.sql                       # Complete PostgreSQL schema & RLS policies
-│   └── seed.sql                         # 10 foods, 5 categories, 3 cooks, reviews
-├── .env.example                         # Environment variable template
-├── next.config.ts                       # Next.js configuration & image domains
-├── package.json                         # Dependencies & npm scripts
-├── tailwind.config.ts                   # Custom color themes & shadows
-└── tsconfig.json                        # TypeScript configuration
+│   ├── schema.sql                       # Complete PostgreSQL schema (orders, deliveries, RLS)
+│   └── seed.sql                         # Foods, categories, cooks, sample deliveries
+└── .env.example                         # Environment variable template with Shadowfax & Razorpay
 ```
 
 ---
 
-## 5. Prerequisites & Installation
+## 5. Real External Delivery Agency Integration (Shadowfax)
 
-### Prerequisites
-- Node.js 18.18+ or 20+ (LTS recommended)
-- npm or yarn or pnpm
-- A free [Supabase](https://supabase.com) account
-- A free [Razorpay](https://razorpay.com) account (for live/test payments)
+Home Plate integrates with **Shadowfax**, one of India's leading on-demand hyperlocal logistics networks.
 
-### Step 1: Clone or Copy Project
-```bash
-cd home-plate
+### Architecture Overview
+
+```
+Customer Order Placed & Paid
+           │
+           ▼
+Home Cook Prepares Meal in Kitchen
+           │
+           ▼
+Cook clicks "Mark Food Ready & Dispatch Delivery"
+           │
+           ▼
+Server Endpoint: POST /api/delivery/create
+           │
+           ├──▶ Validates order, kitchen coordinates & drop address
+           ├──▶ Calls Shadowfax Hyperlocal API: POST /api/v2/clients/orders/
+           ├──▶ Stores delivery record with tracking_id in `deliveries` table
+           └──▶ Advances order status to `ready_for_pickup`
+           │
+           ▼
+Shadowfax Rider Allotted ──▶ Arrived at Store ──▶ Picked Up
+           │
+           ▼ (Webhook Callbacks: POST /api/delivery/shadowfax/webhook)
+           │
+Rider In Transit (Out for Delivery) ──▶ Arrived at Doorstep ──▶ Delivered
+           │
+           ▼
+Order status automatically transitions to `delivered` via verified Webhook
 ```
 
-### Step 2: Install Dependencies
-```bash
-npm install
-```
+### Official Shadowfax Endpoints Used
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/v2/clients/orders/serviceability/` | POST | Check PIN code & coordinate serviceability |
+| `/api/v2/clients/orders/` | POST | Create hyperlocal delivery dispatch |
+| `/api/v2/clients/orders/{sfx_order_id}/` | GET | Real-time rider and tracking query |
+| `/api/v2/clients/orders/{sfx_order_id}/cancel/` | POST | Cancel delivery dispatch |
+| `/api/delivery/shadowfax/webhook` | POST | Home Plate webhook receiver for Shadowfax events |
+
+### Admin Delivery Status Filters
+
+The Admin Deliveries control center (`/admin/deliveries`) supports all 11 lifecycle statuses:
+1. **Pending**: Order confirmed, delivery dispatch not yet initiated.
+2. **Serviceability Failed**: Address outside hyperlocal coverage.
+3. **Delivery Requested**: Dispatched to Shadowfax queue.
+4. **Assigned**: Rider allotted to order.
+5. **Arrived at Pickup**: Rider reached kitchen location.
+6. **Picked Up**: Package collected from kitchen.
+7. **Out for Delivery**: Rider en route to customer doorstep.
+8. **Arrived at Customer**: Rider arrived at drop destination.
+9. **Delivered**: Handover completed and verified by courier.
+10. **Cancelled**: Delivery cancelled by kitchen/admin.
+11. **Failed**: Delivery exception or return-to-origin (RTO).
+
+### Safe Reporting & Transparent Credentials
+
+Home Plate follows strict production safety rules:
+- **No Fake Simulations**: When live credentials are not set, the platform transparently reports *"Delivery integration configured — production credentials required for live dispatch"*. No synthetic GPS movement or fake rider paths are fabricated.
+- **Provider Abstraction**: All logistics logic is encapsulated in `lib/delivery/types.ts` and `lib/delivery/provider.ts`, making it easy to add secondary logistics partners in the future without changing frontend or database code.
 
 ---
 
 ## 6. Supabase Setup & Database Schema
 
-1. Go to [database.new](https://database.new) and create a free project on Supabase.
-2. Open the **SQL Editor** from the left sidebar of your Supabase dashboard.
-3. Open `supabase/schema.sql` from this repository, copy the full content, paste it into the SQL Editor, and click **Run**.
-   - This creates all 14 database tables (`profiles`, `sellers`, `foods`, `categories`, `orders`, `order_items`, `payments`, `reviews`, `coupons`, `addresses`, `wishlists`, etc.).
-   - This enables Row Level Security (RLS) policies for customers, cooks, and admins.
-   - This registers the PostgreSQL trigger to automatically create profiles when new users sign up.
-4. Open `supabase/seed.sql`, paste it into the SQL Editor, and click **Run**.
-   - This seeds 5 categories, 3 sample verified home cooks, 10 authentic regional dishes, reviews, and discount coupons (`WELCOME50`, `HOMEPLATE10`, `FREESHIP`).
-5. Open your Supabase Dashboard **Project Settings** → **API**:
-   - Copy **Project URL** (`NEXT_PUBLIC_SUPABASE_URL`)
-   - Copy **anon public key** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`)
-   - Copy **service_role secret key** (`SUPABASE_SERVICE_ROLE_KEY`)
+### Applying the Schema
+1. Create a project on [supabase.com](https://supabase.com).
+2. Go to **SQL Editor** → **New query**.
+3. Copy the contents of `supabase/schema.sql` and click **Run**.
+4. To load sample home cooks, foods, categories, and test deliveries, copy and run `supabase/seed.sql`.
 
 ---
 
 ## 7. Environment Variables Configuration
 
-Create a `.env.local` file in the root directory by copying `.env.example`:
+Create a `.env.local` file by copying `.env.example`:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in your actual credentials:
+Configure your variables:
 
 ```env
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # Razorpay Configuration (Test Mode initially)
 RAZORPAY_KEY_ID=rzp_test_YourKeyIdHere
 RAZORPAY_KEY_SECRET=YourSecretKeyHere
 RAZORPAY_WEBHOOK_SECRET=YourWebhookSecretHere
 
-# Public App URL (localhost for dev, production domain on Vercel)
+# Shadowfax Hyperlocal Logistics Configuration
+# Staging Sandbox: https://staging-starship.shadowfax.in
+# Live Production: https://starship.shadowfax.in
+SHADOWFAX_BASE_URL=https://staging-starship.shadowfax.in
+SHADOWFAX_API_KEY=your_shadowfax_api_token
+SHADOWFAX_CLIENT_CODE=your_shadowfax_client_code
+SHADOWFAX_WEBHOOK_SECRET=your_shadowfax_webhook_secret
+DEFAULT_DELIVERY_PROVIDER=shadowfax
+
+# Public App URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
-
-> **Note**: Home Plate has a built-in resilient development fallback. If credentials are not yet configured or you are testing offline, the application will automatically function using the in-memory sample database so that every page, cart, role switcher, and checkout can be explored immediately!
 
 ---
 
@@ -218,17 +279,34 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 1. Log into your [Razorpay Dashboard](https://dashboard.razorpay.com).
 2. Toggle to **Test Mode** in the top right.
 3. Go to **Settings** → **API Keys** → click **Generate Key**.
-4. Copy the `Key ID` and `Key Secret` and paste them into `.env.local` as `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`.
-
-### Secure Payment Architecture
-Home Plate follows strict production security guidelines:
-1. **Server-Side Order Creation**: The browser never decides the price. `/api/payments/razorpay/create-order` calculates food prices, discounts, and delivery charges securely on the server.
-2. **Server-Side Signature Verification**: When a customer completes checkout, Razorpay returns `razorpay_order_id`, `razorpay_payment_id`, and `razorpay_signature`. The frontend sends these to `/api/payments/razorpay/verify`, which computes the HMAC-SHA256 digest using `RAZORPAY_KEY_SECRET`. The order is marked **PAID** only after a cryptographic match.
-3. **Double-Payment Guard**: Prevents duplicate verification or double-crediting if an order is already marked paid.
+4. Paste `Key ID` and `Key Secret` into `.env.local`.
 
 ---
 
-## 9. Local Development
+## 9. Shadowfax Logistics Onboarding
+
+### Staging Sandbox Setup
+1. Request sandbox credentials from your Shadowfax Partner Account Manager or sign up on the [Shadowfax Developer Portal](https://developers.shadowfax.in/).
+2. Obtain your **API Token** and **Client Code**.
+3. Set `SHADOWFAX_BASE_URL=https://staging-starship.shadowfax.in`.
+4. Set `SHADOWFAX_API_KEY` in `.env.local` or Vercel Environment Variables.
+
+### Live Production Migration
+1. Sign the commercial agreement and complete business KYC with Shadowfax.
+2. In your production environment, set:
+   ```env
+   SHADOWFAX_BASE_URL=https://starship.shadowfax.in
+   SHADOWFAX_API_KEY=<production_token>
+   SHADOWFAX_WEBHOOK_SECRET=<production_hmac_secret>
+   ```
+3. Set the webhook destination in Shadowfax Dashboard to:
+   ```
+   https://your-domain.vercel.app/api/delivery/shadowfax/webhook
+   ```
+
+---
+
+## 10. Local Development
 
 Run the Next.js development server:
 
@@ -238,94 +316,53 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Quick Role Testing
-In the top micro-bar of the application, click any of the **Quick Test Mode** buttons:
-- **Customer**: Browse food, add to cart, and checkout.
-- **Home Cook**: Access `/seller/dashboard`, add foods, and update live orders.
-- **Admin**: Access `/admin`, approve kitchens, and inspect platform GMV.
-
 ---
 
-## 10. Building for Production
+## 11. Building for Production
 
-To build the application for production deployment:
+Compile and verify TypeScript and Next.js static optimizations:
 
 ```bash
 npm run build
 ```
 
-This compiles TypeScript, bundles Next.js Server Components, optimizes static routes, and verifies type integrity.
-
-To test the production build locally:
-
-```bash
-npm start
-```
-
 ---
 
-## 11. GitHub Deployment & Vercel Hosting
+## 12. GitHub Deployment & Vercel Hosting
 
-### Step 1: Initialize Git and Push to GitHub
+### Push to GitHub
 ```bash
-git init
 git add .
-git commit -m "feat: complete production Home Plate web application"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/home-plate.git
+git commit -m "feat: complete delivery integration and production readiness"
 git push -u origin main
 ```
 
-### Step 2: Deploy on Vercel
-1. Log into [vercel.com](https://vercel.com) and click **Add New** → **Project**.
-2. Select your `home-plate` GitHub repository.
-3. In **Environment Variables**, paste the keys from your `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `RAZORPAY_KEY_ID`
-   - `RAZORPAY_KEY_SECRET`
-   - `RAZORPAY_WEBHOOK_SECRET`
-   - `NEXT_PUBLIC_APP_URL` (set to your Vercel deployment URL, e.g. `https://home-plate.vercel.app`)
-4. Click **Deploy**. Vercel will build and launch your production application worldwide!
+### Deploy on Vercel
+1. Log into [vercel.com](https://vercel.com) and import the repository.
+2. Add all environment variables from `.env.local`.
+3. Click **Deploy**.
 
 ---
 
-## 12. Razorpay Webhook Configuration
+## 13. Webhooks Configuration
 
-To receive real-time webhook updates if a customer pays via external apps:
-1. In Razorpay Dashboard, navigate to **Settings** → **Webhooks** → **Add New Webhook**.
-2. Set **Webhook URL** to:
-   ```
-   https://your-domain.vercel.app/api/payments/razorpay/webhook
-   ```
-3. Set a **Secret** string and save it into your Vercel environment variables as `RAZORPAY_WEBHOOK_SECRET`.
-4. Select the following Active Events:
-   - `order.paid`
-   - `payment.captured`
-   - `payment.failed`
-5. Save the webhook.
+### Razorpay Webhook
+- **URL**: `https://your-domain.vercel.app/api/payments/razorpay/webhook`
+- **Events**: `order.paid`, `payment.captured`, `payment.failed`
+
+### Shadowfax Logistics Webhook
+- **URL**: `https://your-domain.vercel.app/api/delivery/shadowfax/webhook`
+- **Events**: Status lifecycle events (`rider_allocated`, `arrived_pickup`, `picked_up`, `out_for_delivery`, `arrived_delivery`, `delivered`, `cancelled`, `failed`)
 
 ---
 
-## 13. Switching from Test Mode to Live Mode
+## 14. Security & Workflow Boundaries
 
-When you are ready to process real payments:
-1. Complete Razorpay KYC verification on [dashboard.razorpay.com](https://dashboard.razorpay.com).
-2. Toggle the dashboard switch from **Test Mode** to **Live Mode**.
-3. Generate new **Live API Keys** (`rzp_live_...`).
-4. Update `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in your Vercel Project Settings.
-5. Redeploy or restart your application. Real UPI and credit card transactions will now be routed directly to your business bank account.
+- **Sellers Cannot Falsely Mark Delivered**: Sellers can only transition dishes up to *Ready for Pickup*. All subsequent stages (*Assigned*, *Picked Up*, *Out for Delivery*, *Delivered*) are cryptographically verified via Shadowfax webhooks.
+- **Server-Side Pricing**: Prices and discounts are calculated strictly on the server to prevent tampering.
+- **HMAC Signatures**: Both Razorpay payments and Shadowfax callbacks verify HMAC-SHA256 signatures before modifying database records.
+- **Row Level Security**: Supabase RLS policies enforce access control across customers, sellers, and administrators.
 
 ---
 
-## 14. Security Notes
-
-- **Secret Keys Isolation**: `RAZORPAY_KEY_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` are strictly server-side variables and are never bundled into client JavaScript.
-- **Tamper-Proof Pricing**: Food prices and coupons are always fetched from the database on the server during order creation.
-- **Row Level Security**: Database-level PostgreSQL policies safeguard customer address confidentiality and restrict sellers to their own orders.
-- **Input Validation**: All forms and endpoints are validated with Zod schemas to protect against injection and invalid payloads.
-
----
-
-**Home Plate** — Fresh Homemade Food, Delivered to Your Doorstep. Crafted with Next.js 15, Tailwind CSS, Supabase, and Razorpay.
+**Home Plate** — Fresh Homemade Food, Delivered to Your Doorstep. Crafted with Next.js 15, Tailwind CSS, Supabase, Razorpay, and Shadowfax.

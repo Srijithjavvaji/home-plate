@@ -5,12 +5,13 @@ import { store } from "@/lib/data/store";
 import { Order, OrderStatus } from "@/lib/supabase/types";
 import { formatPrice, formatDate, getStatusInfo } from "@/lib/utils";
 import { useToast } from "@/lib/context/ToastContext";
-import { Package, Clock, Check, X, MapPin, Phone, ChefHat, Bike } from "lucide-react";
+import { Package, Clock, Check, X, MapPin, Phone, ChefHat, Bike, ShieldCheck, Loader2 } from "lucide-react";
 
 export default function SellerOrdersPage() {
   const { success, error: toastError } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dispatchingId, setDispatchingId] = useState<string | null>(null);
 
   const loadOrders = async () => {
     setIsLoading(true);
@@ -40,6 +41,45 @@ export default function SellerOrdersPage() {
     }
   };
 
+  const handleMarkReadyForPickup = async (orderId: string) => {
+    setDispatchingId(orderId);
+    try {
+      // Trigger official external delivery dispatch API
+      const res = await fetch("/api/delivery/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? { ...o, status: "ready_for_pickup", delivery: data.delivery }
+              : o
+          )
+        );
+        success(
+          "Delivery Dispatched to Shadowfax",
+          `Order marked ready! Tracking ID: ${data.tracking_id || "Assigned"}`
+        );
+      } else {
+        // Fallback update in store
+        await store.updateOrderStatus(orderId, "ready_for_pickup");
+        setOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? { ...o, status: "ready_for_pickup" } : o))
+        );
+        success("Marked Ready for Pickup", "Order is packed and ready for courier pickup.");
+      }
+    } catch (err: any) {
+      toastError(err.message || "Failed to initiate delivery dispatch");
+    } finally {
+      setDispatchingId(null);
+    }
+  };
+
   return (
     <div className="py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -48,13 +88,15 @@ export default function SellerOrdersPage() {
             Kitchen Live Orders
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            Accept incoming orders, update cooking progress, and hand off freshly packed meals to delivery riders.
+            Accept incoming orders, update cooking progress, and hand off freshly packed meals to Shadowfax Hyperlocal courier riders.
           </p>
         </div>
 
         <div className="space-y-6">
           {orders.map((order) => {
             const statusInfo = getStatusInfo(order.status);
+            const isDispatching = dispatchingId === order.id;
+
             return (
               <div
                 key={order.id}
@@ -72,6 +114,12 @@ export default function SellerOrdersPage() {
                       >
                         {statusInfo.label}
                       </span>
+                      {order.delivery && (
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Shadowfax: {order.delivery.status.replace(/_/g, " ")}</span>
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
                       Received on {formatDate(order.created_at)}
@@ -139,11 +187,11 @@ export default function SellerOrdersPage() {
                   </div>
                 </div>
 
-                {/* Kitchen Status Actions */}
+                {/* Kitchen Status Actions & External Delivery Workflow Boundaries */}
                 <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-gray-700">
-                      Quick Status Transition:
+                      Kitchen Workflow Transition:
                     </span>
                     <select
                       value={order.status}
@@ -154,18 +202,16 @@ export default function SellerOrdersPage() {
                     >
                       <option value="confirmed">Confirmed</option>
                       <option value="preparing">Preparing in Kitchen</option>
-                      <option value="ready_for_pickup">Ready for Pickup</option>
-                      <option value="out_for_delivery">Out for Delivery</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
+                      <option value="ready_for_pickup">Ready for Pickup & Dispatch</option>
+                      <option value="cancelled">Cancel Order</option>
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {order.status === "confirmed" && (
                       <button
                         onClick={() => handleUpdateStatus(order.id, "preparing")}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition flex items-center gap-1"
+                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm"
                       >
                         <ChefHat className="w-3.5 h-3.5" />
                         <span>Start Cooking</span>
@@ -174,34 +220,64 @@ export default function SellerOrdersPage() {
 
                     {order.status === "preparing" && (
                       <button
-                        onClick={() => handleUpdateStatus(order.id, "ready_for_pickup")}
-                        className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition flex items-center gap-1"
+                        onClick={() => handleMarkReadyForPickup(order.id)}
+                        disabled={isDispatching}
+                        className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
                       >
-                        <Package className="w-3.5 h-3.5" />
-                        <span>Mark Packed & Ready</span>
+                        {isDispatching ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Dispatching to Shadowfax...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Package className="w-3.5 h-3.5" />
+                            <span>Mark Food Ready & Dispatch Delivery</span>
+                          </>
+                        )}
                       </button>
                     )}
 
                     {order.status === "ready_for_pickup" && (
-                      <button
-                        onClick={() => handleUpdateStatus(order.id, "out_for_delivery")}
-                        className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-700 transition flex items-center gap-1"
-                      >
-                        <Bike className="w-3.5 h-3.5" />
-                        <span>Hand Off to Rider</span>
-                      </button>
+                      <div className="flex items-center gap-2 bg-blue-50 text-blue-900 border border-blue-200 px-3.5 py-1.5 rounded-xl text-xs">
+                        <Bike className="w-4 h-4 text-blue-600 animate-pulse shrink-0" />
+                        <span>
+                          <strong>Shadowfax Courier Dispatched:</strong> Awaiting rider arrival at your kitchen.
+                        </span>
+                        {order.delivery?.tracking_id && (
+                          <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-blue-200">
+                            {order.delivery.tracking_id}
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     {order.status === "out_for_delivery" && (
-                      <button
-                        onClick={() => handleUpdateStatus(order.id, "delivered")}
-                        className="px-4 py-2 rounded-xl bg-emerald-700 text-white font-bold text-xs hover:bg-emerald-800 transition flex items-center gap-1"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Confirm Delivered</span>
-                      </button>
+                      <div className="flex items-center gap-2 bg-purple-50 text-purple-900 border border-purple-200 px-3.5 py-1.5 rounded-xl text-xs">
+                        <Bike className="w-4 h-4 text-purple-600 shrink-0" />
+                        <span>
+                          <strong>In Transit with Shadowfax:</strong> Courier is delivering to customer doorstep.
+                        </span>
+                      </div>
+                    )}
+
+                    {order.status === "delivered" && (
+                      <div className="flex items-center gap-2 bg-emerald-50 text-emerald-900 border border-emerald-200 px-3.5 py-1.5 rounded-xl text-xs">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>
+                          <strong>Delivered:</strong> Verified directly by Shadowfax delivery callback.
+                        </span>
+                      </div>
                     )}
                   </div>
+                </div>
+
+                {/* Workflow Boundary Protection Disclaimer */}
+                <div className="pt-2 text-[11px] text-gray-400 flex items-center gap-1.5 border-t border-dashed border-gray-100">
+                  <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
+                  <span>
+                    Home Plate Security Policy: Sellers advance orders up to <em>Ready for Pickup</em>. Courier handoff and delivery completion are verified exclusively via the official Shadowfax logistics gateway.
+                  </span>
                 </div>
               </div>
             );

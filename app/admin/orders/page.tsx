@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { store } from "@/lib/data/store";
 import { Order, OrderStatus } from "@/lib/supabase/types";
 import { formatPrice, formatDate, getStatusInfo } from "@/lib/utils";
 import { useToast } from "@/lib/context/ToastContext";
-import { ShoppingBag, Search, Filter } from "lucide-react";
+import { ShoppingBag, Search, Filter, Bike } from "lucide-react";
 
 export default function AdminOrdersPage() {
   const { success } = useToast();
@@ -96,6 +97,15 @@ export default function AdminOrdersPage() {
                         <p className="text-slate-500 text-[11px]">
                           {formatDate(ord.created_at)}
                         </p>
+                        {ord.delivery && (
+                          <Link
+                            href="/admin/deliveries"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full border border-indigo-500/30 hover:bg-indigo-500/30 transition mt-1"
+                          >
+                            <Bike className="w-3 h-3 text-indigo-400" />
+                            <span>{ord.delivery.tracking_id}</span>
+                          </Link>
+                        )}
                       </td>
 
                       <td className="py-4 px-4">

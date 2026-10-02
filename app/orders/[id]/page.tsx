@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "@/lib/data/store";
 import { OrderStatusTracker } from "@/components/order/OrderStatusTracker";
+import { DeliveryTrackingMap } from "@/components/order/DeliveryTrackingMap";
 import { formatPrice, formatDate, getStatusInfo } from "@/lib/utils";
-import { ArrowLeft, MapPin, Phone, CreditCard, ShieldCheck, ChefHat } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, CreditCard, ShieldCheck, ChefHat, Bike, ExternalLink } from "lucide-react";
 
 interface OrderTrackingPageProps {
   params: Promise<{ id: string }>;
@@ -18,6 +19,7 @@ export default async function OrderTrackingPage({ params }: OrderTrackingPagePro
     notFound();
   }
 
+  const delivery = await store.getDeliveryByOrderId(order.id);
   const statusInfo = getStatusInfo(order.status);
 
   return (
@@ -63,6 +65,16 @@ export default async function OrderTrackingPage({ params }: OrderTrackingPagePro
           <OrderStatusTracker
             status={order.status}
             estimatedDelivery={order.estimated_delivery_at}
+            delivery={delivery}
+          />
+        </div>
+
+        {/* Live Delivery Route & Tracking Map */}
+        <div className="mb-6">
+          <DeliveryTrackingMap
+            delivery={delivery}
+            orderNumber={order.order_number}
+            orderStatus={order.status}
           />
         </div>
 
@@ -135,6 +147,54 @@ export default async function OrderTrackingPage({ params }: OrderTrackingPagePro
                 </p>
               </div>
             </div>
+
+            {/* Logistics Partner & Rider Details */}
+            {delivery && (
+              <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    Logistics Fulfillment
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
+                    {delivery.provider}
+                  </span>
+                </div>
+                <div className="text-xs space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Tracking Reference</span>
+                    <span className="font-mono font-bold text-gray-900">
+                      {delivery.tracking_id}
+                    </span>
+                  </div>
+                  {delivery.rider_name && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Assigned Courier</span>
+                      <span className="font-bold text-purple-700">
+                        {delivery.rider_name}
+                      </span>
+                    </div>
+                  )}
+                  {delivery.rider_phone && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Courier Contact</span>
+                      <a
+                        href={`tel:${delivery.rider_phone}`}
+                        className="text-emerald-700 font-bold hover:underline flex items-center gap-1"
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span>{delivery.rider_phone}</span>
+                      </a>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Courier Status</span>
+                    <span className="font-semibold text-gray-900 capitalize">
+                      {delivery.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Payment Details */}
             <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-3">

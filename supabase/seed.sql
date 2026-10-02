@@ -22,7 +22,7 @@ insert into public.profiles (id, email, full_name, phone, role, avatar_url) valu
 on conflict (id) do nothing;
 
 -- 3. INSERT SELLERS
-insert into public.sellers (id, user_id, kitchen_name, description, address, city, state, pincode, phone, fssai_number, rating, total_ratings, status, is_verified, banner_url, logo_url) values
+insert into public.sellers (id, user_id, kitchen_name, description, address, city, state, pincode, phone, latitude, longitude, fssai_number, rating, total_ratings, status, is_verified, banner_url, logo_url) values
   (
     '11111111-aaaa-1111-aaaa-111111111111',
     's0000000-0000-0000-0000-000000000001',
@@ -33,6 +33,8 @@ insert into public.sellers (id, user_id, kitchen_name, description, address, cit
     'Telangana',
     '500081',
     '+91 98765 11001',
+    17.4483,
+    78.3915,
     '23621001000452',
     4.9,
     184,
@@ -51,6 +53,8 @@ insert into public.sellers (id, user_id, kitchen_name, description, address, cit
     'Telangana',
     '500033',
     '+91 98765 11002',
+    17.4319,
+    78.4073,
     '23621001000891',
     4.8,
     128,
@@ -69,6 +73,8 @@ insert into public.sellers (id, user_id, kitchen_name, description, address, cit
     'Telangana',
     '500034',
     '+91 98765 11003',
+    17.4156,
+    78.4350,
     '23621001000129',
     4.95,
     210,
@@ -300,3 +306,73 @@ insert into public.reviews (id, user_id, food_id, rating, comment) values
   ('r0000002-0000-0000-0000-000000000002', 'u0000000-0000-0000-0000-000000000001', 'f0000004-0000-0000-0000-000000000004', 5, 'Real homemade taste without any chemical preservatives or artificial colors. Truly grandmother quality avakaya!'),
   ('r0000003-0000-0000-0000-000000000003', 'u0000000-0000-0000-0000-000000000001', 'f0000003-0000-0000-0000-000000000003', 5, 'Rajma was so tender and homestyle, not heavy like restaurant gravies. Phulkas were hot and soft!')
 on conflict (id) do nothing;
+
+-- 7. INSERT SAMPLE ADDRESSES
+insert into public.addresses (id, user_id, label, address_line1, address_line2, city, state, pincode, phone, latitude, longitude, is_default) values
+  (
+    'ad111111-0000-0000-0000-000000000001',
+    'u0000000-0000-0000-0000-000000000001',
+    'Home',
+    'Flat 401, Sapphire Heights, Hitec City',
+    'Near Cyber Towers',
+    'Hyderabad',
+    'Telangana',
+    '500081',
+    '+91 98765 22001',
+    17.4435,
+    78.3772,
+    true
+  )
+on conflict (id) do nothing;
+
+-- 8. INSERT SAMPLE ORDERS & DELIVERIES
+insert into public.orders (
+  id, order_number, customer_id, seller_id, address_id, delivery_address,
+  status, subtotal, delivery_fee, discount_amount, total_amount, payment_method, payment_status,
+  razorpay_order_id, razorpay_payment_id, created_at
+) values (
+  'o1111111-0000-0000-0000-000000000001',
+  'HP-20260930-101',
+  'u0000000-0000-0000-0000-000000000001',
+  '11111111-aaaa-1111-aaaa-111111111111',
+  'ad111111-0000-0000-0000-000000000001',
+  '{"name": "Rahul Sharma", "phone": "+91 98765 22001", "address_line1": "Flat 401, Sapphire Heights, Hitec City", "city": "Hyderabad", "state": "Telangana", "pincode": "500081", "latitude": 17.4435, "longitude": 78.3772}'::jsonb,
+  'ready_for_pickup',
+  429.00,
+  40.00,
+  50.00,
+  419.00,
+  'razorpay',
+  'paid',
+  'order_mock_1727710000',
+  'pay_mock_982348',
+  now()
+) on conflict (order_number) do nothing;
+
+insert into public.deliveries (
+  id, order_id, provider, tracking_id, status,
+  rider_name, rider_phone, rider_lat, rider_lng,
+  pickup_address, pickup_pincode, pickup_lat, pickup_lng,
+  drop_address, drop_pincode, drop_lat, drop_lng,
+  status_history, tracking_url
+) values (
+  'd1111111-0000-0000-0000-000000000001',
+  'o1111111-0000-0000-0000-000000000001',
+  'shadowfax',
+  'SFX-HP-20260930-101',
+  'requested',
+  null,
+  null,
+  null,
+  null,
+  'Flat 302, Green Meadows, Madhapur, Hyderabad 500081',
+  '500081',
+  17.4483,
+  78.3915,
+  'Flat 401, Sapphire Heights, Hitec City, Hyderabad 500081',
+  '500081',
+  17.4435,
+  78.3772,
+  '[{"status": "requested", "timestamp": "2026-09-30T21:35:00Z", "description": "Delivery request created and awaiting Shadowfax rider assignment."}]'::jsonb,
+  'https://shadowfax.in/track?order_id=HP-20260930-101'
+) on conflict (order_id) do nothing;

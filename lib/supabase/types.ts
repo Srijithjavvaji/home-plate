@@ -16,6 +16,27 @@ export type OrderStatus =
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type PaymentMethod = "razorpay" | "cod";
 
+export type DeliveryProviderName = "shadowfax" | "internal";
+
+export type DeliveryStatus =
+  | "pending"
+  | "serviceability_failed"
+  | "requested"
+  | "assigned"
+  | "arrived_pickup"
+  | "picked_up"
+  | "out_for_delivery"
+  | "arrived_customer"
+  | "delivered"
+  | "cancelled"
+  | "failed";
+
+export interface StatusHistoryEntry {
+  status: DeliveryStatus;
+  timestamp: string;
+  description: string;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -37,6 +58,8 @@ export interface Seller {
   state: string;
   pincode: string;
   phone: string;
+  latitude?: number;
+  longitude?: number;
   fssai_number?: string;
   banner_url?: string;
   logo_url?: string;
@@ -93,6 +116,8 @@ export interface Address {
   state: string;
   pincode: string;
   phone: string;
+  latitude?: number;
+  longitude?: number;
   is_default: boolean;
 }
 
@@ -114,6 +139,37 @@ export interface OrderItem {
   total_price: number;
 }
 
+export interface Delivery {
+  id: string;
+  order_id: string;
+  provider: DeliveryProviderName;
+  tracking_id: string;
+  status: DeliveryStatus;
+  rider_name?: string;
+  rider_phone?: string;
+  rider_lat?: number;
+  rider_lng?: number;
+  pickup_address: string;
+  pickup_pincode: string;
+  pickup_lat?: number;
+  pickup_lng?: number;
+  drop_address: string;
+  drop_pincode: string;
+  drop_lat?: number;
+  drop_lng?: number;
+  estimated_pickup_at?: string;
+  estimated_delivery_at?: string;
+  actual_pickup_at?: string;
+  actual_delivery_at?: string;
+  status_history?: StatusHistoryEntry[];
+  tracking_url?: string;
+  raw_response?: any;
+  failure_reason?: string;
+  created_at: string;
+  updated_at?: string;
+  order?: Order;
+}
+
 export interface Order {
   id: string;
   order_number: string;
@@ -129,6 +185,8 @@ export interface Order {
     pincode: string;
     phone: string;
     name?: string;
+    latitude?: number;
+    longitude?: number;
   };
   status: OrderStatus;
   subtotal: number;
@@ -147,6 +205,7 @@ export interface Order {
   items?: OrderItem[];
   customer?: Profile;
   seller?: Seller;
+  delivery?: Delivery;
 }
 
 export interface Review {

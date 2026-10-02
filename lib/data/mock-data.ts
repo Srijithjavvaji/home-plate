@@ -1,4 +1,4 @@
-import { Category, Food, Order, Profile, Review, Seller, Coupon } from "../supabase/types";
+import { Category, Food, Order, Profile, Review, Seller, Coupon, Delivery } from "../supabase/types";
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
@@ -59,6 +59,8 @@ export const INITIAL_SELLERS: Seller[] = [
     state: "Telangana",
     pincode: "500081",
     phone: "+91 98765 11001",
+    latitude: 17.4483,
+    longitude: 78.3915,
     fssai_number: "23621001000452",
     rating: 4.9,
     total_ratings: 184,
@@ -77,6 +79,8 @@ export const INITIAL_SELLERS: Seller[] = [
     state: "Telangana",
     pincode: "500033",
     phone: "+91 98765 11002",
+    latitude: 17.4319,
+    longitude: 78.4073,
     fssai_number: "23621001000891",
     rating: 4.8,
     total_ratings: 128,
@@ -95,6 +99,8 @@ export const INITIAL_SELLERS: Seller[] = [
     state: "Telangana",
     pincode: "500034",
     phone: "+91 98765 11003",
+    latitude: 17.4156,
+    longitude: 78.4350,
     fssai_number: "23621001000129",
     rating: 4.95,
     total_ratings: 210,
@@ -399,8 +405,10 @@ export const INITIAL_ORDERS: Order[] = [
       city: "Hyderabad",
       state: "Telangana",
       pincode: "500081",
+      latitude: 17.4435,
+      longitude: 78.3772,
     },
-    status: "preparing",
+    status: "ready_for_pickup",
     subtotal: 429.00,
     delivery_fee: 40.00,
     discount_amount: 50.00,
@@ -433,5 +441,33 @@ export const INITIAL_ORDERS: Order[] = [
         total_price: 280.00,
       },
     ],
+  },
+];
+
+export const INITIAL_DELIVERIES: Delivery[] = [
+  {
+    id: "del_1001",
+    order_id: "ord_1001",
+    provider: "shadowfax",
+    tracking_id: "SFX-HP-20260930-101",
+    status: "requested",
+    pickup_address: "Flat 302, Green Meadows, Madhapur, Hyderabad 500081",
+    pickup_pincode: "500081",
+    pickup_lat: 17.4483,
+    pickup_lng: 78.3915,
+    drop_address: "Flat 401, Sapphire Heights, Hitec City, Hyderabad 500081",
+    drop_pincode: "500081",
+    drop_lat: 17.4435,
+    drop_lng: 78.3772,
+    estimated_delivery_at: "2026-09-30T22:45:00Z",
+    status_history: [
+      {
+        status: "requested",
+        timestamp: "2026-09-30T21:35:00Z",
+        description: "Delivery request registered with Shadowfax Hyperlocal.",
+      },
+    ],
+    tracking_url: "https://shadowfax.in/track?order_id=HP-20260930-101",
+    created_at: "2026-09-30T21:35:00Z",
   },
 ];

@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Layers,
   ArrowLeft,
+  Bike,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ export const AdminNav: React.FC = () => {
     { href: "/admin/sellers", label: "Sellers & Approvals", icon: Store },
     { href: "/admin/foods", label: "Food Catalog", icon: UtensilsCrossed },
     { href: "/admin/orders", label: "All Orders", icon: ShoppingBag },
+    { href: "/admin/deliveries", label: "Deliveries", icon: Bike },
     { href: "/admin/categories", label: "Categories", icon: Layers },
   ];
 
