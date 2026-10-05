@@ -172,6 +172,12 @@ export default function CheckoutPage() {
         };
 
         const rzp = new window.Razorpay(options);
+        rzp.on("payment.failed", function (response: any) {
+          setIsProcessing(false);
+          const reason = response.error?.description || response.error?.reason || "Payment could not be completed";
+          setErrorMessage(reason);
+          toastError("Payment Failed", reason);
+        });
         rzp.open();
       } else {
         // Smooth Test Mode verification fallback (when using placeholder Razorpay credentials)
