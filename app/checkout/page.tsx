@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useCart } from "@/lib/context/CartContext";
@@ -20,6 +20,9 @@ import {
   ArrowRight,
   Clock,
   Sparkles,
+  ChefHat,
+  Calendar,
+  AlertTriangle,
 } from "lucide-react";
 
 declare global {
@@ -35,6 +38,8 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const { success, error: toastError } = useToast();
 
+  const MIN_ORDER_VALUE = 149;
+
   const [customerName, setCustomerName] = useState(user?.full_name || "Rahul Sharma");
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "+91 98765 22001");
   const [addressLine1, setAddressLine1] = useState("Flat 401, Sapphire Heights, Hitec City");
@@ -43,21 +48,41 @@ export default function CheckoutPage() {
   const [state, setState] = useState("Telangana");
   const [pincode, setPincode] = useState("500081");
   const [notes, setNotes] = useState("");
+  const [deliverySlot, setDeliverySlot] = useState<"asap" | "scheduled">("asap");
+  const [scheduledAt, setScheduledAt] = useState<string>("");
 
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Group items by seller for multi-kitchen transparency
+  const sellerGroups = items.reduce((acc, it) => {
+    const sId = it.food.seller_id || "single";
+    const sName = it.food.seller?.kitchen_name || "Verified Homemaker Kitchen";
+    if (!acc[sId]) acc[sId] = { name: sName, items: [] };
+    acc[sId].items.push(it);
+    return acc;
+  }, {} as Record<string, { name: string; items: typeof items }>);
+
+  const uniqueSellersCount = Object.keys(sellerGroups).length;
+
+  useEffect(() => {
+    if (items.length > 0 && subtotal < MIN_ORDER_VALUE) {
+      toastError("Minimum Order Value", `Minimum order value is ₹${MIN_ORDER_VALUE}. Redirecting to cart.`);
+      router.push("/cart");
+    }
+  }, [subtotal, items.length, router, toastError]);
+
   if (items.length === 0) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="text-center max-w-sm bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+      <div className="min-h-[70vh] flex items-center justify-center p-4 bg-[#fffdfa]">
+        <div className="text-center max-w-sm bg-white p-8 rounded-3xl border border-orange-100 shadow-sm">
           <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-gray-900">Cart is empty</h2>
           <p className="text-xs text-gray-500 mt-1 mb-5">
             Add some homemade delicacies to checkout.
           </p>
-          <Button onClick={() => router.push("/foods")} className="w-full">
+          <Button onClick={() => router.push("/foods")} className="w-full bg-orange-600 hover:bg-orange-700">
             Explore Foods
           </Button>
         </div>
@@ -68,6 +93,12 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+
+    if (subtotal < MIN_ORDER_VALUE) {
+      setErrorMessage(`Minimum order value is ₹${MIN_ORDER_VALUE}. Current subtotal: ${formatPrice(subtotal)}`);
+      return;
+    }
+
     setIsProcessing(true);
 
     const deliveryAddress = {
@@ -93,6 +124,8 @@ export default function CheckoutPage() {
             notes,
             couponCode: appliedCoupon?.code,
             paymentMethod: "cod",
+            deliverySlot,
+            scheduledAt: deliverySlot === "scheduled" ? scheduledAt : undefined,
           }),
         });
 
@@ -100,13 +133,12 @@ export default function CheckoutPage() {
         if (!res.ok) throw new Error(data.error || "Order creation failed");
 
         clearCart();
-        success("Order Placed Successfully!", "Your order will be prepared fresh.");
+        success("Order Placed Successfully!", "Your homemade order will be prepared with care.");
         router.push(`/order-success?orderId=${data.orderId}`);
         return;
       }
 
       // Razorpay Payment Flow
-      // 1. Create Order on SERVER with secure validation
       const createOrderRes = await fetch("/api/payments/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,6 +147,8 @@ export default function CheckoutPage() {
           deliveryAddress,
           customerId: user?.id,
           couponCode: appliedCoupon?.code,
+          deliverySlot,
+          scheduledAt: deliverySlot === "scheduled" ? scheduledAt : undefined,
         }),
       });
 
@@ -123,7 +157,7 @@ export default function CheckoutPage() {
         throw new Error(orderData.error || "Failed to initialize payment");
       }
 
-      // 2. Open Razorpay Checkout modal
+      // Open Razorpay Checkout modal
       if (typeof window.Razorpay === "function" && !orderData.keyId.includes("placeholder")) {
         const options = {
           key: orderData.keyId,
@@ -138,10 +172,9 @@ export default function CheckoutPage() {
             email: user?.email || "customer@homeplate.app",
           },
           theme: {
-            color: "#059669", // emerald-600
+            color: "#ea580c", // Brand Orange
           },
           handler: async function (response: any) {
-            // 3. SERVER-SIDE SIGNATURE VERIFICATION
             const verifyRes = await fetch("/api/payments/razorpay/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -180,7 +213,7 @@ export default function CheckoutPage() {
         });
         rzp.open();
       } else {
-        // Smooth Test Mode verification fallback (when using placeholder Razorpay credentials)
+        // Test mode fallback
         const mockPaymentId = `pay_mock_${Date.now()}`;
         const verifyRes = await fetch("/api/payments/razorpay/verify", {
           method: "POST",
@@ -215,14 +248,14 @@ export default function CheckoutPage() {
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
-      <div className="min-h-screen bg-gray-50/50 py-10">
+      <div className="min-h-screen bg-[#fffdfa] py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-950">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#271b15]">
               Delivery & Checkout
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Enter your delivery address and choose your payment method
+            <p className="text-xs text-[#7c5946] mt-0.5">
+              Enter your Hyderabad delivery address, choose your delivery slot and preferred payment method
             </p>
           </div>
 
@@ -237,9 +270,9 @@ export default function CheckoutPage() {
                 )}
 
                 {/* Contact Information */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-4">
+                <div className="bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <User className="w-4 h-4 text-emerald-600" />
+                    <User className="w-4 h-4 text-orange-600" />
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
                       Customer Information
                     </h3>
@@ -268,11 +301,11 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Delivery Address */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-4">
+                <div className="bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <MapPin className="w-4 h-4 text-emerald-600" />
+                    <MapPin className="w-4 h-4 text-orange-600" />
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-                      Delivery Address
+                      Hyderabad Delivery Address
                     </h3>
                   </div>
 
@@ -318,22 +351,71 @@ export default function CheckoutPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                      Cooking or Delivery Instructions (Optional)
+                  <Input
+                    label="Delivery Instructions / Landmarks (Optional)"
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="e.g. Leave with security / Call upon arrival"
+                  />
+                </div>
+
+                {/* Delivery Schedule Slot */}
+                <div className="bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-orange-600" />
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                      Fulfillment Slot
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label
+                      className={`flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
+                        deliverySlot === "asap"
+                          ? "bg-orange-50/70 border-orange-600 ring-2 ring-orange-600/20"
+                          : "bg-gray-50 border-gray-200 hover:bg-gray-100/60"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="deliverySlot"
+                        value="asap"
+                        checked={deliverySlot === "asap"}
+                        onChange={() => setDeliverySlot("asap")}
+                        className="text-orange-600 focus:ring-orange-500"
+                      />
+                      <div>
+                        <strong className="block text-xs font-bold text-gray-900">ASAP Delivery</strong>
+                        <span className="text-[11px] text-gray-500">Dispatched in 35-45 minutes</span>
+                      </div>
                     </label>
-                    <textarea
-                      rows={2}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="e.g. Please make slightly less spicy / Ring bell on arrival"
-                      className="w-full text-xs p-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-emerald-500"
-                    />
+
+                    <label
+                      className={`flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
+                        deliverySlot === "scheduled"
+                          ? "bg-orange-50/70 border-orange-600 ring-2 ring-orange-600/20"
+                          : "bg-gray-50 border-gray-200 hover:bg-gray-100/60"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="deliverySlot"
+                        value="scheduled"
+                        checked={deliverySlot === "scheduled"}
+                        onChange={() => setDeliverySlot("scheduled")}
+                        className="text-orange-600 focus:ring-orange-500"
+                      />
+                      <div>
+                        <strong className="block text-xs font-bold text-gray-900">Schedule Delivery</strong>
+                        <span className="text-[11px] text-gray-500">Evening / Next day batch</span>
+                      </div>
+                    </label>
                   </div>
                 </div>
 
                 {/* Payment Method Selector */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-4">
+                <div className="bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 shadow-sm space-y-4">
                   <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">
                     Select Payment Method
                   </h3>
@@ -343,7 +425,7 @@ export default function CheckoutPage() {
                     <label
                       className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
                         paymentMethod === "razorpay"
-                          ? "bg-emerald-50/70 border-emerald-600 ring-2 ring-emerald-600/20"
+                          ? "bg-orange-50/70 border-orange-600 ring-2 ring-orange-600/20"
                           : "bg-gray-50 border-gray-200 hover:bg-gray-100/60"
                       }`}
                     >
@@ -353,21 +435,18 @@ export default function CheckoutPage() {
                         value="razorpay"
                         checked={paymentMethod === "razorpay"}
                         onChange={() => setPaymentMethod("razorpay")}
-                        className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                        className="mt-1 text-orange-600 focus:ring-orange-500"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4 text-emerald-700" />
+                          <CreditCard className="w-4 h-4 text-orange-700" />
                           <span className="font-bold text-gray-900 text-sm">
-                            Razorpay Online Payment (UPI, Cards, NetBanking)
+                            Razorpay Online Payment (UPI, Cards, NetBanking, Wallets)
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                          Secure 256-bit encrypted gateway. Supports Google Pay, PhonePe, Paytm, UPI, Debit/Credit cards, and NetBanking.
+                        <p className="text-xs text-[#7c5946] mt-1 leading-relaxed">
+                          Secure 256-bit encrypted gateway. Supports Google Pay, PhonePe, Paytm, BHIM UPI, Debit/Credit cards, and NetBanking.
                         </p>
-                        <span className="inline-block mt-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                          Razorpay Test Mode Ready
-                        </span>
                       </div>
                     </label>
 
@@ -375,7 +454,7 @@ export default function CheckoutPage() {
                     <label
                       className={`flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
                         paymentMethod === "cod"
-                          ? "bg-emerald-50/70 border-emerald-600 ring-2 ring-emerald-600/20"
+                          ? "bg-orange-50/70 border-orange-600 ring-2 ring-orange-600/20"
                           : "bg-gray-50 border-gray-200 hover:bg-gray-100/60"
                       }`}
                     >
@@ -385,17 +464,17 @@ export default function CheckoutPage() {
                         value="cod"
                         checked={paymentMethod === "cod"}
                         onChange={() => setPaymentMethod("cod")}
-                        className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                        className="mt-1 text-orange-600 focus:ring-orange-500"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <Banknote className="w-4 h-4 text-emerald-700" />
+                          <Banknote className="w-4 h-4 text-orange-700" />
                           <span className="font-bold text-gray-900 text-sm">
                             Cash on Delivery (COD)
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Pay with cash or UPI directly to our delivery rider when your food arrives.
+                        <p className="text-xs text-[#7c5946] mt-1">
+                          Pay directly to our delivery courier when your fresh homemade items arrive.
                         </p>
                       </div>
                     </label>
@@ -405,29 +484,38 @@ export default function CheckoutPage() {
 
               {/* Right Column: Order Summary Sidebar */}
               <div className="lg:col-span-5 space-y-4">
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-5">
+                <div className="bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 shadow-sm space-y-5">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">
                       Order Summary ({items.length} items)
                     </h3>
-                    <span className="text-xs font-semibold text-emerald-700">
-                      Home Plate Kitchens
+                    <span className="text-xs font-semibold text-orange-700">
+                      {uniqueSellersCount} Kitchen{uniqueSellersCount > 1 ? "s" : ""}
                     </span>
                   </div>
 
-                  {/* Items Mini List */}
-                  <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 pr-1">
-                    {items.map(({ food, quantity }) => (
-                      <div key={food.id} className="py-2.5 flex items-center justify-between text-xs">
-                        <div className="flex-1 pr-3">
-                          <p className="font-bold text-gray-900 truncate">{food.name}</p>
-                          <p className="text-gray-500 text-[11px]">
-                            {quantity} x {formatPrice(food.price)}
-                          </p>
-                        </div>
-                        <span className="font-bold text-gray-950">
-                          {formatPrice(food.price * quantity)}
+                  {/* Multi-kitchen grouped items */}
+                  <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 pr-1">
+                    {Object.entries(sellerGroups).map(([sId, group]) => (
+                      <div key={sId} className="py-2.5">
+                        <span className="text-[10px] font-bold text-orange-800 uppercase tracking-wider bg-orange-50 px-2 py-0.5 rounded">
+                          {group.name}
                         </span>
+                        <div className="mt-1 space-y-1.5">
+                          {group.items.map(({ food, quantity }) => (
+                            <div key={food.id} className="flex items-center justify-between text-xs">
+                              <div className="flex-1 pr-3 truncate">
+                                <p className="font-semibold text-gray-900 truncate">{food.name}</p>
+                                <p className="text-gray-500 text-[10px]">
+                                  {quantity} × {formatPrice(food.price)} ({food.net_weight || food.serving_info})
+                                </p>
+                              </div>
+                              <span className="font-bold text-gray-950 shrink-0">
+                                {formatPrice(food.price * quantity)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -451,7 +539,7 @@ export default function CheckoutPage() {
                     </div>
 
                     {discount > 0 && (
-                      <div className="flex justify-between text-emerald-700 font-semibold">
+                      <div className="flex justify-between text-orange-700 font-semibold">
                         <span>Coupon Savings {appliedCoupon && `(${appliedCoupon.code})`}</span>
                         <span>- {formatPrice(discount)}</span>
                       </div>
@@ -459,7 +547,7 @@ export default function CheckoutPage() {
 
                     <div className="border-t border-gray-100 pt-3 flex justify-between items-baseline text-base font-extrabold text-gray-950">
                       <span>Total Amount to Pay</span>
-                      <span className="text-2xl text-emerald-700">
+                      <span className="text-2xl text-orange-600">
                         {formatPrice(total)}
                       </span>
                     </div>
@@ -469,7 +557,7 @@ export default function CheckoutPage() {
                   <Button
                     type="submit"
                     isLoading={isProcessing}
-                    className="w-full py-4 text-base"
+                    className="w-full py-4 text-base bg-orange-600 hover:bg-orange-700 text-white font-bold"
                     rightIcon={<ArrowRight className="w-5 h-5" />}
                   >
                     {paymentMethod === "razorpay"
@@ -478,8 +566,8 @@ export default function CheckoutPage() {
                   </Button>
 
                   <div className="flex items-center justify-center gap-2 text-[11px] text-gray-500 pt-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Server-verified payment • 100% moneyback guarantee</span>
+                    <ShieldCheck className="w-4 h-4 text-orange-600" />
+                    <span>Official 256-Bit Razorpay & Shadowfax Integration</span>
                   </div>
                 </div>
               </div>

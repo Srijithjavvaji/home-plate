@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { verifyRazorpayWebhookSignature } from "@/lib/razorpay";
 import { store } from "@/lib/data/store";
 
@@ -17,6 +17,14 @@ export async function POST(request: Request) {
     }
 
     const event = JSON.parse(rawBody);
+    const eventId = event.event_id || event.id || `rzp_${Date.now()}`;
+
+    // Webhook Idempotency check: Skip duplicate processing
+    const alreadyProcessed = await store.isWebhookEventProcessed(eventId);
+    if (alreadyProcessed) {
+      return NextResponse.json({ status: "ok", message: "Event already processed" });
+    }
+
     const eventType = event.event;
 
     if (eventType === "payment.captured" || eventType === "order.paid") {
@@ -37,6 +45,9 @@ export async function POST(request: Request) {
         }
       }
     }
+
+    // Record webhook event in idempotency ledger
+    await store.recordWebhookEvent(eventId, "razorpay", eventType, event);
 
     return NextResponse.json({ status: "ok" });
   } catch (err: any) {

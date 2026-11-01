@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { store } from "@/lib/data/store";
 import { shadowfaxInstance } from "@/lib/delivery/provider";
 import { sendNotification } from "@/lib/notifications";
@@ -22,6 +22,14 @@ export async function POST(req: Request) {
       payload = JSON.parse(rawBody);
     } catch {
       return NextResponse.json({ error: "Malformed JSON payload" }, { status: 400 });
+    }
+
+    const eventId = payload.event_id || payload.id || `sfx_${payload.tracking_id || Date.now()}_${payload.status || "update"}`;
+
+    // Webhook Idempotency Check
+    const alreadyProcessed = await store.isWebhookEventProcessed(eventId);
+    if (alreadyProcessed) {
+      return NextResponse.json({ success: true, message: "Webhook event already processed" });
     }
 
     const event = shadowfaxInstance.parseWebhookPayload(payload);
@@ -93,6 +101,9 @@ export async function POST(req: Request) {
         });
       }
     }
+
+    // Record in idempotency ledger
+    await store.recordWebhookEvent(eventId, "shadowfax", event.status, payload);
 
     return NextResponse.json({
       success: true,

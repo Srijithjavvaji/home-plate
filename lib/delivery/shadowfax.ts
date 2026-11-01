@@ -218,19 +218,18 @@ export class ShadowfaxDeliveryProvider implements IDeliveryProvider {
     const clientOrderId = req.order_number || req.order_id;
 
     if (!this.isConfigured()) {
-      // Clean, unsimulated response indicating credentials must be provided
-      const deliveryId = `sfx_req_${Date.now()}`;
+      // Honest boundary: Never claim a delivery is booked or live-tracked without confirmed provider dispatch
       return {
-        success: true,
+        success: false,
         provider: "shadowfax",
-        delivery_id: deliveryId,
-        tracking_id: `SFX-${clientOrderId}`,
-        status: "requested",
-        tracking_url: `https://shadowfax.in/track?order_id=${clientOrderId}`,
-        estimated_delivery_at: new Date(Date.now() + 40 * 60 * 1000).toISOString(),
+        delivery_id: "",
+        tracking_id: "",
+        status: "pending",
+        error: "Shadowfax API credentials unconfigured. Live dispatch requires SHADOWFAX_API_KEY and SHADOWFAX_CLIENT_CODE onboarding.",
         raw_response: {
-          note: "Delivery request registered. Set SHADOWFAX_API_KEY for live dispatch.",
-          client_order_id: clientOrderId,
+          configured: false,
+          missing_env: ["SHADOWFAX_API_KEY", "SHADOWFAX_CLIENT_CODE"],
+          message: "Live courier dispatch is awaiting Shadowfax enterprise credentials.",
         },
       };
     }
@@ -516,5 +515,20 @@ export class ShadowfaxDeliveryProvider implements IDeliveryProvider {
       notes: body.message || body.notes,
       raw: body,
     };
+  }
+
+  /**
+   * Generate 4-digit Delivery Confirmation OTP for handoff verification
+   */
+  generateDeliveryOtp(): string {
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  }
+
+  /**
+   * Verify Delivery OTP
+   */
+  verifyDeliveryOtp(expectedOtp: string, enteredOtp: string): boolean {
+    if (!expectedOtp || !enteredOtp) return false;
+    return expectedOtp.trim() === enteredOtp.trim();
   }
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -18,6 +18,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   X,
+  AlertTriangle,
+  ChefHat,
+  Package,
 } from "lucide-react";
 
 export default function CartPage() {
@@ -38,6 +41,19 @@ export default function CartPage() {
   const { success, error: toastError } = useToast();
 
   const [couponInput, setCouponInput] = useState("");
+  const MIN_ORDER_VALUE = 149;
+  const isBelowMinOrder = subtotal < MIN_ORDER_VALUE;
+
+  // Group items by seller
+  const sellerGroups = items.reduce((acc, it) => {
+    const sId = it.food.seller_id || "single";
+    const sName = it.food.seller?.kitchen_name || "Verified Kitchen";
+    if (!acc[sId]) acc[sId] = { name: sName, items: [] };
+    acc[sId].items.push(it);
+    return acc;
+  }, {} as Record<string, { name: string; items: typeof items }>);
+
+  const uniqueSellersCount = Object.keys(sellerGroups).length;
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,20 +70,20 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-[75vh] flex items-center justify-center py-16 px-4">
-        <div className="text-center max-w-md bg-white rounded-3xl p-10 border border-gray-100 shadow-card">
-          <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-5">
+      <div className="min-h-[75vh] flex items-center justify-center py-16 px-4 bg-[#fffdfa]">
+        <div className="text-center max-w-md bg-white rounded-3xl p-10 border border-orange-100 shadow-sm">
+          <div className="w-20 h-20 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center mx-auto mb-5">
             <ShoppingBag className="w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-extrabold text-gray-950">
-            Your Cart is Empty
+          <h2 className="text-2xl font-extrabold text-[#271b15]">
+            Your Food Cart is Empty
           </h2>
-          <p className="text-xs text-gray-500 mt-2 max-w-xs mx-auto leading-relaxed">
-            Good homemade food is cooking right now in your neighborhood. Discover fresh dishes and add them to your cart!
+          <p className="text-xs text-[#7c5946] mt-2 max-w-xs mx-auto leading-relaxed">
+            Homemade snacks, pickles, podis, and pure sweets are waiting for you from homemakers across Hyderabad!
           </p>
           <Link
             href="/foods"
-            className="mt-6 inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95"
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md shadow-orange-600/30 transition-all hover:scale-105 active:scale-95"
           >
             <span>Explore Homemade Foods</span>
             <ArrowRight className="w-4 h-4" />
@@ -78,14 +94,14 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 py-10">
+    <div className="min-h-screen bg-[#fffdfa] py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-950">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#271b15]">
               Your Food Cart
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-[#7c5946] mt-0.5">
               Review your items before proceeding to checkout
             </p>
           </div>
@@ -97,86 +113,110 @@ export default function CartPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Items List */}
-          <div className="lg:col-span-8 space-y-4">
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
-              {items.map(({ food, quantity }) => (
-                <div key={food.id} className="p-4 sm:p-6 flex items-center gap-4">
-                  {/* Food Image */}
-                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-gray-100 shrink-0">
-                    <Image
-                      src={food.image_url}
-                      alt={food.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-
-                  {/* Food Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <VegBadge isVeg={food.is_veg} size="sm" />
-                      <span className="text-[11px] text-gray-400 font-medium truncate">
-                        {food.serving_info}
-                      </span>
-                    </div>
-
-                    <Link
-                      href={`/foods/${food.id}`}
-                      className="font-bold text-gray-900 text-sm hover:text-emerald-700 transition truncate block"
-                    >
-                      {food.name}
-                    </Link>
-
-                    <p className="text-xs font-semibold text-gray-950 mt-1">
-                      {formatPrice(food.price)} each
-                    </p>
-                  </div>
-
-                  {/* Quantity Controller */}
-                  <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1 border border-gray-200">
-                    <button
-                      onClick={() => updateQuantity(food.id, -1)}
-                      className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-gray-700 hover:bg-gray-200 transition"
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="text-xs font-bold w-5 text-center">
-                      {quantity}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(food.id, 1)}
-                      className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-gray-700 hover:bg-gray-200 transition"
-                      aria-label="Increase quantity"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Item Subtotal & Delete */}
-                  <div className="text-right pl-2 shrink-0">
-                    <p className="text-sm font-extrabold text-gray-950">
-                      {formatPrice(food.price * quantity)}
-                    </p>
-                    <button
-                      onClick={() => removeItem(food.id)}
-                      className="text-gray-400 hover:text-rose-600 transition p-1 mt-1"
-                      aria-label="Remove item"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+        {/* Multi-seller fulfillment advisory banner */}
+        {uniqueSellersCount > 1 && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-start gap-3 text-xs text-amber-900">
+            <ChefHat className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-bold">Multi-Kitchen Order ({uniqueSellersCount} Homemakers):</strong>
+              <p className="text-amber-800 mt-0.5">
+                Your items will be prepared with care by separate home cooks and delivered individually for maximum freshness and food hygiene.
+              </p>
             </div>
+          </div>
+        )}
 
-            {/* Quick Delivery Guarantee Note */}
-            <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 flex items-center gap-3 text-xs text-emerald-900">
-              <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Items List (Grouped by Kitchen) */}
+          <div className="lg:col-span-8 space-y-6">
+            {Object.entries(sellerGroups).map(([sId, group]) => (
+              <div key={sId} className="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+                <div className="bg-orange-50/60 px-6 py-3 border-b border-orange-100 flex items-center gap-2">
+                  <ChefHat className="w-4 h-4 text-orange-600" />
+                  <span className="text-xs font-bold text-orange-950 uppercase tracking-wider">
+                    Kitchen: {group.name}
+                  </span>
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                  {group.items.map(({ food, quantity }) => (
+                    <div key={food.id} className="p-4 sm:p-6 flex items-center gap-4">
+                      {/* Food Image */}
+                      <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-gray-100 shrink-0">
+                        <Image
+                          src={food.image_url}
+                          alt={food.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      {/* Food Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <VegBadge isVeg={food.is_veg} size="sm" />
+                          <span className="text-[11px] text-gray-500 font-medium truncate">
+                            {food.net_weight || food.serving_info}
+                          </span>
+                        </div>
+
+                        <Link
+                          href={`/foods/${food.id}`}
+                          className="font-bold text-gray-900 text-sm hover:text-orange-700 transition truncate block"
+                        >
+                          {food.name}
+                        </Link>
+
+                        <p className="text-xs font-semibold text-gray-950 mt-1">
+                          {formatPrice(food.price)} each
+                        </p>
+                      </div>
+
+                      {/* Quantity Controller */}
+                      <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1 border border-gray-200">
+                        <button
+                          onClick={() => updateQuantity(food.id, -1)}
+                          className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-gray-700 hover:bg-gray-200 transition"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-xs font-bold w-5 text-center">
+                          {quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(food.id, 1)}
+                          className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-gray-700 hover:bg-gray-200 transition"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Item Subtotal & Delete */}
+                      <div className="text-right pl-2 shrink-0">
+                        <p className="text-sm font-extrabold text-gray-950">
+                          {formatPrice(food.price * quantity)}
+                        </p>
+                        <button
+                          onClick={() => removeItem(food.id)}
+                          className="text-gray-400 hover:text-rose-600 transition p-1 mt-1"
+                          aria-label="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Guarantee Note */}
+            <div className="bg-orange-50/70 border border-orange-100 rounded-2xl p-4 flex items-center gap-3 text-xs text-[#634537]">
+              <ShieldCheck className="w-5 h-5 text-orange-600 shrink-0" />
               <span>
-                <strong>100% Home Cook Guarantee:</strong> Every meal is cooked fresh in verified domestic kitchens and packed hot.
+                <strong>100% Homemade Guarantee:</strong> Every item is crafted in verified domestic kitchens and sealed in food-safe packaging.
               </span>
             </div>
           </div>
@@ -184,22 +224,22 @@ export default function CartPage() {
           {/* Bill Summary & Coupons */}
           <div className="lg:col-span-4 space-y-4">
             {/* Promo Coupon Card */}
-            <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+            <div className="bg-white rounded-3xl border border-orange-100 p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
-                <Tag className="w-4 h-4 text-emerald-600" />
+                <Tag className="w-4 h-4 text-orange-600" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">
                   Offers & Coupons
                 </h3>
               </div>
 
               {appliedCoupon ? (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-orange-50 border border-orange-200 text-xs">
                   <div>
-                    <div className="flex items-center gap-1 font-bold text-emerald-800">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <div className="flex items-center gap-1 font-bold text-orange-900">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-orange-600" />
                       <span>{appliedCoupon.code}</span>
                     </div>
-                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                    <p className="text-[11px] text-orange-800 mt-0.5">
                       {appliedCoupon.description}
                     </p>
                   </div>
@@ -217,12 +257,12 @@ export default function CartPage() {
                     type="text"
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                    placeholder="Enter WELCOME50 or HOMEPLATE10"
-                    className="flex-1 uppercase bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 focus:bg-white font-medium"
+                    placeholder="Enter WELCOME50"
+                    className="flex-1 uppercase bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-orange-500 focus:bg-white font-medium"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
                   >
                     Apply
                   </button>
@@ -234,19 +274,19 @@ export default function CartPage() {
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   <button
                     onClick={() => applyCoupon("WELCOME50")}
-                    className="text-[10px] font-semibold bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 px-2 py-1 rounded-lg border border-dashed border-gray-300 transition"
+                    className="text-[10px] font-semibold bg-gray-50 hover:bg-orange-50 text-gray-700 hover:text-orange-800 px-2 py-1 rounded-lg border border-dashed border-gray-300 transition"
                   >
                     WELCOME50 (₹50 off)
                   </button>
                   <button
                     onClick={() => applyCoupon("HOMEPLATE10")}
-                    className="text-[10px] font-semibold bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 px-2 py-1 rounded-lg border border-dashed border-gray-300 transition"
+                    className="text-[10px] font-semibold bg-gray-50 hover:bg-orange-50 text-gray-700 hover:text-orange-800 px-2 py-1 rounded-lg border border-dashed border-gray-300 transition"
                   >
                     HOMEPLATE10 (10% off)
                   </button>
                   <button
                     onClick={() => applyCoupon("FREESHIP")}
-                    className="text-[10px] font-semibold bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 px-2 py-1 rounded-lg border border-dashed border-gray-300 transition"
+                    className="text-[10px] font-semibold bg-gray-50 hover:bg-orange-50 text-gray-700 hover:text-orange-800 px-2 py-1 rounded-lg border border-dashed border-gray-300 transition"
                   >
                     FREESHIP (Free Delivery)
                   </button>
@@ -255,7 +295,7 @@ export default function CartPage() {
             </div>
 
             {/* Bill Details */}
-            <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm space-y-4">
+            <div className="bg-white rounded-3xl border border-orange-100 p-6 shadow-sm space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-100 pb-3">
                 Bill Summary
               </h3>
@@ -282,7 +322,7 @@ export default function CartPage() {
                 </div>
 
                 {discount > 0 && (
-                  <div className="flex justify-between text-emerald-700 font-semibold">
+                  <div className="flex justify-between text-orange-700 font-semibold">
                     <span>Discount Savings</span>
                     <span>- {formatPrice(discount)}</span>
                   </div>
@@ -290,18 +330,32 @@ export default function CartPage() {
 
                 <div className="border-t border-gray-100 pt-3 flex justify-between items-baseline text-base font-extrabold text-gray-950">
                   <span>Total Amount</span>
-                  <span className="text-xl text-emerald-700">
+                  <span className="text-xl text-orange-600">
                     {formatPrice(total)}
                   </span>
                 </div>
               </div>
 
+              {/* Minimum Order Value Warning */}
+              {isBelowMinOrder && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Minimum Order Value: ₹{MIN_ORDER_VALUE}</strong>
+                    <p className="text-[11px] text-amber-800 mt-0.5">
+                      Add {formatPrice(MIN_ORDER_VALUE - subtotal)} more homemade delicacies to checkout.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Checkout Button */}
               <button
                 onClick={() => router.push("/checkout")}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                disabled={isBelowMinOrder}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md shadow-orange-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
               >
-                <span>Proceed to Checkout</span>
+                <span>{isBelowMinOrder ? `Add ₹${MIN_ORDER_VALUE - subtotal} to Checkout` : "Proceed to Checkout"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

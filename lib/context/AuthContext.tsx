@@ -26,7 +26,7 @@ const DEFAULT_USERS: Record<UserRole, Profile> = {
     full_name: "Rahul Sharma",
     phone: "+91 98765 22001",
     role: "customer",
-    avatar_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80",
+    avatar_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
   },
   seller: {
     id: "s0000000-0000-0000-0000-000000000001",
@@ -34,7 +34,7 @@ const DEFAULT_USERS: Record<UserRole, Profile> = {
     full_name: "Lakshmi Devi",
     phone: "+91 98765 11001",
     role: "seller",
-    avatar_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80",
+    avatar_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200",
   },
   admin: {
     id: "a0000000-0000-0000-0000-000000000001",
@@ -42,7 +42,31 @@ const DEFAULT_USERS: Record<UserRole, Profile> = {
     full_name: "Home Plate Admin",
     phone: "+91 98765 00001",
     role: "admin",
-    avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+    avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
+  },
+  super_admin: {
+    id: "sa000000-0000-0000-0000-000000000001",
+    email: "superadmin@homeplate.app",
+    full_name: "Super Admin (Founder)",
+    phone: "+91 98765 00002",
+    role: "super_admin",
+    avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
+  },
+  operations_admin: {
+    id: "oa000000-0000-0000-0000-000000000001",
+    email: "ops@homeplate.app",
+    full_name: "Operations Admin",
+    phone: "+91 98765 00003",
+    role: "operations_admin",
+    avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
+  },
+  seller_support: {
+    id: "ss000000-0000-0000-0000-000000000001",
+    email: "support@homeplate.app",
+    full_name: "Seller Support Specialist",
+    phone: "+91 98765 00004",
+    role: "seller_support",
+    avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
   },
 };
 

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { store } from "@/lib/data/store";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { items, deliveryAddress, customerId, notes, couponCode, paymentMethod } = body;
+    const { items, deliveryAddress, customerId, notes, couponCode, paymentMethod, deliverySlot, scheduledAt } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "No items in order" }, { status: 400 });
@@ -31,10 +31,23 @@ export async function POST(request: Request) {
         unit_price: food.price,
         quantity: item.quantity,
         total_price: itemPrice,
+        seller_id: food.seller_id,
       });
     }
 
-    let deliveryFee = subtotal >= 500 ? 0 : 40;
+    // Configurable Minimum Order Value Enforcement
+    const minOrderValue = await store.getAppSetting("min_order_value", 149);
+    if (subtotal < minOrderValue) {
+      return NextResponse.json(
+        { error: `Minimum order value is ₹${minOrderValue}. Please add more items (Current: ₹${subtotal})` },
+        { status: 400 }
+      );
+    }
+
+    // Configurable Delivery Fee
+    const freeDeliveryThreshold = await store.getAppSetting("free_delivery_threshold", 500);
+    const baseDeliveryFee = await store.getAppSetting("base_delivery_fee", 40);
+    let deliveryFee = subtotal >= freeDeliveryThreshold ? 0 : baseDeliveryFee;
     let discount = 0;
 
     if (couponCode) {
@@ -62,12 +75,15 @@ export async function POST(request: Request) {
       total_amount: totalAmount,
       payment_method: paymentMethod || "cod",
       notes,
+      delivery_slot: deliverySlot || "asap",
+      scheduled_at: scheduledAt,
     });
 
     return NextResponse.json({
       success: true,
       orderId: order.id,
       orderNumber: order.order_number,
+      parentOrderId: order.parent_order_id,
     });
   } catch (error: any) {
     console.error("Order creation API error:", error);

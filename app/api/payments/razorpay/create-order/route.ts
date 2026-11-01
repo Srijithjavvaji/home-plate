@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createRazorpayOrder, razorpayKeyId } from "@/lib/razorpay";
 import { store } from "@/lib/data/store";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { items, couponCode, deliveryAddress, customerId } = body;
+    const { items, couponCode, deliveryAddress, customerId, deliverySlot, scheduledAt } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -15,7 +15,6 @@ export async function POST(request: Request) {
     }
 
     // SERVER-SIDE CALCULATION: Never trust client-calculated price!
-    // Re-fetch food items from database to compute real price
     let calculatedSubtotal = 0;
     const validatedItems = [];
 
@@ -23,7 +22,7 @@ export async function POST(request: Request) {
       const food = await store.getFoodById(item.food_id || item.food?.id);
       if (!food) {
         return NextResponse.json(
-          { error: `Item ${item.food_id} no longer exists` },
+          { error: `Item ${item.food_id} is no longer available` },
           { status: 400 }
         );
       }
@@ -43,14 +42,26 @@ export async function POST(request: Request) {
         unit_price: food.price,
         quantity: item.quantity,
         total_price: itemTotal,
+        seller_id: food.seller_id,
       });
     }
 
-    // Delivery fee rule: Free above 500, else 40
-    let deliveryFee = calculatedSubtotal >= 500 ? 0 : 40;
+    // 1. Configurable Minimum Order Value Enforcement
+    const minOrderValue = await store.getAppSetting("min_order_value", 149);
+    if (calculatedSubtotal < minOrderValue) {
+      return NextResponse.json(
+        { error: `Minimum order value is ₹${minOrderValue}. Please add more items (Current: ₹${calculatedSubtotal})` },
+        { status: 400 }
+      );
+    }
+
+    // 2. Configurable Delivery Fee
+    const freeDeliveryThreshold = await store.getAppSetting("free_delivery_threshold", 500);
+    const baseDeliveryFee = await store.getAppSetting("base_delivery_fee", 40);
+    let deliveryFee = calculatedSubtotal >= freeDeliveryThreshold ? 0 : baseDeliveryFee;
     let discount = 0;
 
-    // Validate Coupon securely on server
+    // 3. Server-side Coupon Validation
     if (couponCode) {
       const coupon = await store.getCoupon(couponCode);
       if (coupon && calculatedSubtotal >= coupon.min_order_amount) {
@@ -80,7 +91,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // Create Home Plate Order in database with status 'payment_pending'
+    // Create Home Plate Order (with multi-seller split support)
     const newOrder = await store.createOrder({
       customer_id: customerId || "u0000000-0000-0000-0000-000000000001",
       delivery_address: deliveryAddress,
@@ -91,6 +102,8 @@ export async function POST(request: Request) {
       total_amount: finalTotal,
       payment_method: "razorpay",
       razorpay_order_id: razorpayOrder.id,
+      delivery_slot: deliverySlot || "asap",
+      scheduled_at: scheduledAt,
     });
 
     return NextResponse.json({
@@ -101,6 +114,7 @@ export async function POST(request: Request) {
       keyId: razorpayKeyId || "rzp_test_placeholder_key_id",
       orderId: newOrder.id,
       orderNumber: newOrder.order_number,
+      parentOrderId: newOrder.parent_order_id,
     });
   } catch (error: any) {
     console.error("Razorpay order creation error:", error);

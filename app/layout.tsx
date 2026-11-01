@@ -1,23 +1,26 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { CartProvider } from "@/lib/context/CartContext";
 import { WishlistProvider } from "@/lib/context/WishlistContext";
 import { ToastProvider } from "@/lib/context/ToastContext";
+import { LanguageProvider } from "@/lib/context/LanguageContext";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "Home Plate | Fresh Homemade Food, Delivered to Your Doorstep",
+  title: "Home Plate | Homemade Goodness, Delivered with Love",
   description:
-    "Order authentic, hygienic homemade food from verified home cooks near you. Grandma pickles, homestyle thalis, podis, and pure sweets delivered fresh.",
+    "Discover authentic homemade snacks, pure sweets, sun-cured pickles, aromatic podis, and healthy delicacies crafted by verified homemakers and home cooks across Hyderabad.",
   keywords: [
     "homemade food",
-    "home cook delivery",
-    "fresh homemade meals",
-    "avakaya pickle",
-    "home plate food delivery",
-    "hyderabad home cooked food",
+    "home plate",
+    "hyderabad homemade snacks",
+    "traditional sweets",
+    "andhra avakaya pickle",
+    "kandi podi",
+    "healthy millet snacks",
+    "hyderabad home cooks",
   ],
 };
 
@@ -36,18 +39,20 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="flex flex-col min-h-screen font-sans">
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <ToastProvider>
-                <Navbar />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </ToastProvider>
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
+      <body className="flex flex-col min-h-screen font-sans bg-[#fffdfa] text-gray-900">
+        <LanguageProvider>
+          <AuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <ToastProvider>
+                  <Navbar />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </ToastProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

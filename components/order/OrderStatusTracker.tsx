@@ -1,29 +1,46 @@
+"use client";
+
 import React from "react";
-import { CheckCircle2, Clock, ChefHat, PackageCheck, Bike, Home, AlertCircle, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  ChefHat,
+  PackageCheck,
+  Bike,
+  Home,
+  AlertCircle,
+  ShieldCheck,
+  KeyRound,
+  Sparkles,
+} from "lucide-react";
 import { OrderStatus, Delivery } from "@/lib/supabase/types";
 
 interface OrderStatusTrackerProps {
   status: OrderStatus;
   estimatedDelivery?: string;
   delivery?: Delivery | null;
+  scheduledAt?: string;
+  deliverySlot?: string;
 }
 
 const STEPS = [
-  { key: "confirmed", label: "Confirmed", icon: CheckCircle2, desc: "Order accepted" },
-  { key: "preparing", label: "Preparing", icon: ChefHat, desc: "Home cook is cooking" },
-  { key: "ready_for_pickup", label: "Ready", icon: PackageCheck, desc: "Packed fresh" },
-  { key: "out_for_delivery", label: "Out for Delivery", icon: Bike, desc: "Rider on the way" },
-  { key: "delivered", label: "Delivered", icon: Home, desc: "Enjoy your meal!" },
+  { key: "confirmed", label: "Confirmed", icon: CheckCircle2, desc: "Order accepted by home kitchen" },
+  { key: "preparing", label: "Crafting Batch", icon: ChefHat, desc: "Homemaker is cooking fresh" },
+  { key: "ready_for_pickup", label: "Packed & Sealed", icon: PackageCheck, desc: "Awaiting courier pickup" },
+  { key: "out_for_delivery", label: "Out for Delivery", icon: Bike, desc: "Rider navigating to doorstep" },
+  { key: "delivered", label: "Delivered", icon: Home, desc: "Enjoy your homemade goodness!" },
 ];
 
 export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
   status,
   estimatedDelivery,
   delivery,
+  scheduledAt,
+  deliverySlot,
 }) => {
   if (status === "cancelled") {
     return (
-      <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center">
+      <div className="bg-rose-50 border border-rose-200 rounded-3xl p-6 text-center shadow-sm">
         <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
           <AlertCircle className="w-6 h-6" />
         </div>
@@ -52,13 +69,13 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+    <div className="bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 shadow-sm">
       {/* Header Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-gray-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-orange-100">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-              Live Progress
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold uppercase tracking-wider text-orange-800 bg-orange-100/80 px-2.5 py-1 rounded-full">
+              Live Fulfillment
             </span>
             {delivery?.provider && (
               <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
@@ -66,22 +83,28 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
                 <span>{delivery.provider.toUpperCase()} Logistics</span>
               </span>
             )}
+            {deliverySlot && (
+              <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                Slot: {deliverySlot.toUpperCase()}
+              </span>
+            )}
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mt-2">
+          <h3 className="text-lg font-bold text-[#26140e] mt-2">
             {STEPS[currentStepIndex]?.desc || "Processing your order"}
           </h3>
           {delivery?.rider_name && (
-            <p className="text-xs text-purple-700 font-semibold mt-1">
+            <p className="text-xs text-orange-700 font-semibold mt-1">
               Rider: {delivery.rider_name} {delivery.rider_phone ? `(${delivery.rider_phone})` : ""}
             </p>
           )}
         </div>
+
         {estimatedDelivery && (
-          <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-100">
-            <Clock className="w-4 h-4 text-emerald-600" />
+          <div className="flex items-center gap-2 text-xs text-stone-600 bg-orange-50/50 px-3.5 py-2 rounded-2xl border border-orange-200">
+            <Clock className="w-4 h-4 text-orange-600" />
             <span>
               Estimated arrival:{" "}
-              <strong className="text-gray-900 font-semibold">
+              <strong className="text-stone-900 font-bold">
                 {new Date(estimatedDelivery).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -96,11 +119,11 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
       <div className="mt-8">
         <div className="relative">
           {/* Background Connecting Bar */}
-          <div className="absolute top-5 left-6 right-6 h-1 bg-gray-200 -z-0 hidden md:block" />
+          <div className="absolute top-5 left-6 right-6 h-1 bg-stone-200 -z-0 hidden md:block" />
 
           {/* Active Connecting Bar */}
           <div
-            className="absolute top-5 left-6 h-1 bg-emerald-600 transition-all duration-500 -z-0 hidden md:block"
+            className="absolute top-5 left-6 h-1 bg-orange-600 transition-all duration-500 -z-0 hidden md:block"
             style={{
               width: `${(currentStepIndex / (STEPS.length - 1)) * 90}%`,
             }}
@@ -117,10 +140,10 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 ${
                       isCompleted
-                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                        ? "bg-orange-600 text-white shadow-md shadow-orange-600/30"
                         : isCurrent
-                        ? "bg-emerald-600 text-white ring-4 ring-emerald-100 shadow-md shadow-emerald-600/40 animate-pulse"
-                        : "bg-gray-100 text-gray-400 border border-gray-200"
+                        ? "bg-orange-600 text-white ring-4 ring-orange-100 shadow-md shadow-orange-600/40 animate-pulse"
+                        : "bg-stone-100 text-stone-400 border border-stone-200"
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -128,12 +151,12 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
                   <div>
                     <p
                       className={`text-xs font-bold leading-tight ${
-                        isCompleted || isCurrent ? "text-gray-900" : "text-gray-400"
+                        isCompleted || isCurrent ? "text-stone-900" : "text-stone-400"
                       }`}
                     >
                       {step.label}
                     </p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">{step.desc}</p>
+                    <p className="text-[11px] text-stone-500 mt-0.5">{step.desc}</p>
                   </div>
                 </div>
               );
@@ -141,6 +164,42 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Doorstep Delivery OTP Handshake Card */}
+      {delivery?.delivery_otp && (
+        <div className="mt-8 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border-2 border-orange-200/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-md shadow-orange-600/30 shrink-0">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-orange-950">
+                  Doorstep Delivery Confirmation PIN
+                </span>
+                {delivery.otp_verified ? (
+                  <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+                    Handshake Verified
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-300">
+                    Share at Doorstep
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-stone-600 mt-0.5">
+                Share this 4-digit code with the courier rider upon delivery to safely confirm receipt.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-2xl border border-orange-300 shadow-sm shrink-0">
+            <span className="text-2xl font-black tracking-widest text-[#26140e] font-mono">
+              {delivery.delivery_otp}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

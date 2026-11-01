@@ -5,7 +5,19 @@ import { store } from "@/lib/data/store";
 import { Order, OrderStatus } from "@/lib/supabase/types";
 import { formatPrice, formatDate, getStatusInfo } from "@/lib/utils";
 import { useToast } from "@/lib/context/ToastContext";
-import { Package, Clock, Check, X, MapPin, Phone, ChefHat, Bike, ShieldCheck, Loader2 } from "lucide-react";
+import {
+  Package,
+  Clock,
+  Check,
+  X,
+  MapPin,
+  Phone,
+  ChefHat,
+  Bike,
+  ShieldCheck,
+  Loader2,
+  KeyRound,
+} from "lucide-react";
 
 export default function SellerOrdersPage() {
   const { success, error: toastError } = useToast();
@@ -44,7 +56,7 @@ export default function SellerOrdersPage() {
   const handleMarkReadyForPickup = async (orderId: string) => {
     setDispatchingId(orderId);
     try {
-      // Trigger official external delivery dispatch API
+      // Trigger delivery dispatch API
       const res = await fetch("/api/delivery/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -62,7 +74,7 @@ export default function SellerOrdersPage() {
           )
         );
         success(
-          "Delivery Dispatched to Shadowfax",
+          "Delivery Dispatched",
           `Order marked ready! Tracking ID: ${data.tracking_id || "Assigned"}`
         );
       } else {
@@ -81,14 +93,19 @@ export default function SellerOrdersPage() {
   };
 
   return (
-    <div className="py-8">
+    <div className="py-8 bg-[#fffdfa] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold text-gray-950">
-            Kitchen Live Orders
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-orange-700 bg-orange-100/80 px-2.5 py-0.5 rounded-full">
+              Kitchen Operations
+            </span>
+          </div>
+          <h1 className="text-2xl font-extrabold text-[#26140e] mt-1">
+            Kitchen Live Orders & Handshakes
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Accept incoming orders, update cooking progress, and hand off freshly packed meals to Shadowfax Hyperlocal courier riders.
+          <p className="text-xs text-stone-500 mt-0.5">
+            Accept incoming Hyderabad orders, advance cooking batches, and hand off packed homemade goods to courier partners.
           </p>
         </div>
 
@@ -100,13 +117,13 @@ export default function SellerOrdersPage() {
             return (
               <div
                 key={order.id}
-                className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-6"
+                className="bg-white rounded-3xl border border-orange-100 p-6 sm:p-8 shadow-sm space-y-6"
               >
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-orange-100 gap-3">
                   <div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-base font-extrabold text-gray-950">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-base font-extrabold text-[#26140e]">
                         {order.order_number}
                       </span>
                       <span
@@ -115,23 +132,28 @@ export default function SellerOrdersPage() {
                         {statusInfo.label}
                       </span>
                       {order.delivery && (
-                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>Shadowfax: {order.delivery.status.replace(/_/g, " ")}</span>
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-800 border border-orange-200 flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-orange-600" />
+                          <span>{order.delivery.provider.toUpperCase()}: {order.delivery.status.replace(/_/g, " ")}</span>
+                        </span>
+                      )}
+                      {order.delivery_slot && (
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 capitalize">
+                          Slot: {order.delivery_slot.replace(/_/g, " ")}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-stone-400 mt-1">
                       Received on {formatDate(order.created_at)}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <div className="text-left sm:text-right">
-                      <p className="text-lg font-black text-gray-950">
+                      <p className="text-lg font-black text-orange-600">
                         {formatPrice(order.total_amount)}
                       </p>
-                      <span className="text-[11px] text-gray-500 uppercase font-semibold">
+                      <span className="text-[11px] text-stone-500 uppercase font-semibold">
                         {order.payment_method === "razorpay" ? "Razorpay Paid" : "Cash on Delivery"}
                       </span>
                     </div>
@@ -142,23 +164,23 @@ export default function SellerOrdersPage() {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                   {/* Items */}
                   <div className="md:col-span-7 space-y-3">
-                    <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      Ordered Dishes
+                    <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                      Ordered Homemade Goods
                     </h3>
-                    <div className="divide-y divide-gray-100 rounded-2xl bg-gray-50/70 p-4 border border-gray-100">
+                    <div className="divide-y divide-orange-50 rounded-2xl bg-orange-50/40 p-4 border border-orange-100">
                       {order.items?.map((it) => (
                         <div key={it.id} className="py-2 flex justify-between text-xs font-medium">
-                          <span className="text-gray-900 font-bold">
+                          <span className="text-stone-900 font-bold">
                             {it.quantity}x {it.food_name}
                           </span>
-                          <span className="text-gray-700">
+                          <span className="text-stone-700">
                             {formatPrice(it.total_price)}
                           </span>
                         </div>
                       ))}
                     </div>
                     {order.notes && (
-                      <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                      <p className="text-xs text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
                         <strong>Customer Note:</strong> {order.notes}
                       </p>
                     )}
@@ -166,19 +188,19 @@ export default function SellerOrdersPage() {
 
                   {/* Customer & Address */}
                   <div className="md:col-span-5 space-y-3">
-                    <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                       Customer & Drop Location
                     </h3>
-                    <div className="p-4 rounded-2xl bg-gray-50/70 border border-gray-100 text-xs text-gray-600 space-y-1.5">
-                      <p className="font-bold text-gray-900 text-sm">
+                    <div className="p-4 rounded-2xl bg-orange-50/40 border border-orange-100 text-xs text-stone-600 space-y-1.5">
+                      <p className="font-bold text-stone-900 text-sm">
                         {order.delivery_address?.name || "Customer"}
                       </p>
-                      <div className="flex items-center gap-1.5 text-gray-700">
-                        <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                      <div className="flex items-center gap-1.5 text-stone-700">
+                        <Phone className="w-3.5 h-3.5 text-orange-600" />
                         <span>{order.delivery_address?.phone}</span>
                       </div>
-                      <div className="flex items-start gap-1.5 text-gray-500 pt-1">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <div className="flex items-start gap-1.5 text-stone-500 pt-1">
+                        <MapPin className="w-3.5 h-3.5 text-orange-600 shrink-0 mt-0.5" />
                         <span>
                           {order.delivery_address?.address_line1}, {order.delivery_address?.city} ({order.delivery_address?.pincode})
                         </span>
@@ -187,10 +209,10 @@ export default function SellerOrdersPage() {
                   </div>
                 </div>
 
-                {/* Kitchen Status Actions & External Delivery Workflow Boundaries */}
-                <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                {/* Kitchen Status Actions */}
+                <div className="pt-4 border-t border-orange-100 flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-700">
+                    <span className="text-xs font-bold text-stone-700">
                       Kitchen Workflow Transition:
                     </span>
                     <select
@@ -198,10 +220,10 @@ export default function SellerOrdersPage() {
                       onChange={(e) =>
                         handleUpdateStatus(order.id, e.target.value as OrderStatus)
                       }
-                      className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-emerald-500"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-orange-500"
                     >
                       <option value="confirmed">Confirmed</option>
-                      <option value="preparing">Preparing in Kitchen</option>
+                      <option value="preparing">Crafting in Kitchen</option>
                       <option value="ready_for_pickup">Ready for Pickup & Dispatch</option>
                       <option value="cancelled">Cancel Order</option>
                     </select>
@@ -211,10 +233,10 @@ export default function SellerOrdersPage() {
                     {order.status === "confirmed" && (
                       <button
                         onClick={() => handleUpdateStatus(order.id, "preparing")}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm"
+                        className="px-4 py-2 rounded-xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 transition flex items-center gap-1.5 shadow-sm shadow-orange-600/20"
                       >
                         <ChefHat className="w-3.5 h-3.5" />
-                        <span>Start Cooking</span>
+                        <span>Start Preparing Batch</span>
                       </button>
                     )}
 
@@ -222,30 +244,30 @@ export default function SellerOrdersPage() {
                       <button
                         onClick={() => handleMarkReadyForPickup(order.id)}
                         disabled={isDispatching}
-                        className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                        className="px-4 py-2 rounded-xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 transition flex items-center gap-1.5 shadow-sm shadow-orange-600/20 disabled:opacity-50"
                       >
                         {isDispatching ? (
                           <>
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Dispatching to Shadowfax...</span>
+                            <span>Dispatching Delivery...</span>
                           </>
                         ) : (
                           <>
                             <Package className="w-3.5 h-3.5" />
-                            <span>Mark Food Ready & Dispatch Delivery</span>
+                            <span>Mark Batch Ready & Pack</span>
                           </>
                         )}
                       </button>
                     )}
 
                     {order.status === "ready_for_pickup" && (
-                      <div className="flex items-center gap-2 bg-blue-50 text-blue-900 border border-blue-200 px-3.5 py-1.5 rounded-xl text-xs">
-                        <Bike className="w-4 h-4 text-blue-600 animate-pulse shrink-0" />
+                      <div className="flex items-center gap-2 bg-amber-50 text-amber-900 border border-amber-200 px-3.5 py-1.5 rounded-xl text-xs">
+                        <Bike className="w-4 h-4 text-orange-600 animate-pulse shrink-0" />
                         <span>
-                          <strong>Shadowfax Courier Dispatched:</strong> Awaiting rider arrival at your kitchen.
+                          <strong>Courier Dispatched:</strong> Awaiting rider arrival at your kitchen.
                         </span>
                         {order.delivery?.tracking_id && (
-                          <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-blue-200">
+                          <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-amber-200 font-bold">
                             {order.delivery.tracking_id}
                           </span>
                         )}
@@ -253,10 +275,10 @@ export default function SellerOrdersPage() {
                     )}
 
                     {order.status === "out_for_delivery" && (
-                      <div className="flex items-center gap-2 bg-purple-50 text-purple-900 border border-purple-200 px-3.5 py-1.5 rounded-xl text-xs">
-                        <Bike className="w-4 h-4 text-purple-600 shrink-0" />
+                      <div className="flex items-center gap-2 bg-orange-50 text-orange-900 border border-orange-200 px-3.5 py-1.5 rounded-xl text-xs">
+                        <Bike className="w-4 h-4 text-orange-600 shrink-0" />
                         <span>
-                          <strong>In Transit with Shadowfax:</strong> Courier is delivering to customer doorstep.
+                          <strong>Out for Delivery:</strong> Courier is en route to customer doorstep.
                         </span>
                       </div>
                     )}
@@ -265,19 +287,11 @@ export default function SellerOrdersPage() {
                       <div className="flex items-center gap-2 bg-emerald-50 text-emerald-900 border border-emerald-200 px-3.5 py-1.5 rounded-xl text-xs">
                         <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span>
-                          <strong>Delivered:</strong> Verified directly by Shadowfax delivery callback.
+                          <strong>Delivered:</strong> Handshake OTP verified at doorstep.
                         </span>
                       </div>
                     )}
                   </div>
-                </div>
-
-                {/* Workflow Boundary Protection Disclaimer */}
-                <div className="pt-2 text-[11px] text-gray-400 flex items-center gap-1.5 border-t border-dashed border-gray-100">
-                  <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
-                  <span>
-                    Home Plate Security Policy: Sellers advance orders up to <em>Ready for Pickup</em>. Courier handoff and delivery completion are verified exclusively via the official Shadowfax logistics gateway.
-                  </span>
                 </div>
               </div>
             );

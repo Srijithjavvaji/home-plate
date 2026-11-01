@@ -6,7 +6,7 @@ import { store } from "@/lib/data/store";
 import { Food, Category } from "@/lib/supabase/types";
 import { FoodCard } from "@/components/food/FoodCard";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Search, SlidersHorizontal, Sparkles, X, Check } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles, X, Check, MapPin } from "lucide-react";
 
 function FoodsContent() {
   const searchParams = useSearchParams();
@@ -94,39 +94,39 @@ function FoodsContent() {
   }, [foods, search, selectedCategory, vegOnly, sortBy]);
 
   return (
-    <div className="min-h-screen bg-gray-50/40 py-10">
+    <div className="min-h-screen bg-[#fffdfa] py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-100/70 w-fit px-3 py-1 rounded-full mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Freshly Cooked Near You</span>
+          <div className="flex items-center gap-2 text-xs font-bold text-orange-800 bg-orange-100/80 w-fit px-3 py-1 rounded-full mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-orange-600" />
+            <span>Hyderabad's Handcrafted Homemade Marketplace</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-950 tracking-tight">
-            Discover Homemade Foods
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#26140e] tracking-tight">
+            Homemade Goodness, Delivered with Love
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Handcrafted traditional delicacies prepared by certified neighborhood home cooks.
+          <p className="text-sm text-stone-600 mt-1">
+            Discover authentic snacks, sweets, pickles, podis, healthy bites, and regional specialities crafted in Hyderabad home kitchens.
           </p>
         </div>
 
         {/* Search & Filter Controls */}
-        <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm mb-8 space-y-4">
+        <div className="bg-white rounded-3xl border border-orange-100 p-5 shadow-sm mb-8 space-y-4">
           <div className="flex flex-col md:flex-row gap-3">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5 pointer-events-none" />
+              <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5 pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by dish, ingredient, or home cook..."
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-10 py-2.5 text-sm text-gray-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
+                placeholder="Search homemade snacks, avakaya, podis, sweets, or home cooks..."
+                className="w-full bg-orange-50/40 border border-orange-200 rounded-2xl pl-10 pr-10 py-2.5 text-sm text-stone-900 focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -136,10 +136,10 @@ function FoodsContent() {
             {/* Veg Toggle */}
             <button
               onClick={() => setVegOnly(!vegOnly)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all ${
                 vegOnly
                   ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  : "bg-white text-stone-700 border-orange-200 hover:bg-orange-50/50"
               }`}
             >
               <div
@@ -158,7 +158,7 @@ function FoodsContent() {
 
             {/* Sort Dropdown */}
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-gray-400 shrink-0 hidden sm:block" />
+              <SlidersHorizontal className="w-4 h-4 text-stone-400 shrink-0 hidden sm:block" />
               <select
                 value={sortBy}
                 onChange={(e) =>
@@ -166,13 +166,13 @@ function FoodsContent() {
                     e.target.value as "featured" | "price-asc" | "price-desc" | "rating" | "time"
                   )
                 }
-                className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                className="bg-orange-50/40 border border-orange-200 rounded-2xl px-3 py-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:border-orange-500 focus:bg-white"
               >
                 <option value="featured">Featured First</option>
                 <option value="rating">Top Rated</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
-                <option value="time">Fastest Preparation</option>
+                <option value="time">Batch Crafting Time</option>
               </select>
             </div>
           </div>
@@ -181,10 +181,10 @@ function FoodsContent() {
           <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-none">
             <button
               onClick={() => setSelectedCategory("all")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+              className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                 selectedCategory === "all"
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-orange-600 text-white shadow-md shadow-orange-600/30"
+                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
               All Categories
@@ -193,10 +193,10 @@ function FoodsContent() {
               <button
                 key={c.id}
                 onClick={() => setSelectedCategory(c.slug)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                   selectedCategory === c.slug || selectedCategory === c.id
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-orange-600 text-white shadow-md shadow-orange-600/30"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                 }`}
               >
                 {c.name}
@@ -207,8 +207,8 @@ function FoodsContent() {
 
         {/* Results Counter */}
         <div className="flex items-center justify-between mb-6">
-          <p className="text-xs text-gray-500 font-medium">
-            Showing <strong className="text-gray-900">{filteredFoods.length}</strong> delicious dishes
+          <p className="text-xs text-stone-500 font-medium">
+            Showing <strong className="text-stone-900">{filteredFoods.length}</strong> authentic homemade delicacies
           </p>
           {(search || selectedCategory !== "all" || vegOnly) && (
             <button
@@ -217,44 +217,42 @@ function FoodsContent() {
                 setSelectedCategory("all");
                 setVegOnly(false);
               }}
-              className="text-xs text-emerald-700 hover:underline font-semibold"
+              className="text-xs text-orange-600 hover:underline font-semibold"
             >
-              Reset Filters
+              Reset all filters
             </button>
           )}
         </div>
 
         {/* Food Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 space-y-3">
-                <Skeleton className="h-44 w-full rounded-xl" />
+              <div key={i} className="bg-white rounded-3xl p-4 border border-orange-100 space-y-3">
+                <Skeleton className="h-44 w-full rounded-2xl" />
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-3 w-1/2" />
-                <div className="flex justify-between pt-2">
-                  <Skeleton className="h-6 w-16" />
+                <div className="flex justify-between items-center pt-2">
+                  <Skeleton className="h-5 w-16" />
                   <Skeleton className="h-8 w-20 rounded-xl" />
                 </div>
               </div>
             ))}
           </div>
         ) : filteredFoods.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredFoods.map((food) => (
               <FoodCard key={food.id} food={food} />
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center max-w-lg mx-auto">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-2xl">
-              🥘
+          <div className="bg-white rounded-3xl border border-orange-100 p-12 text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center mx-auto">
+              <Search className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">
-              No dishes match your filter
-            </h3>
-            <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
-              Try searching for something else or clearing your vegetarian or category filters.
+            <h3 className="text-lg font-bold text-[#26140e]">No Homemade Items Match</h3>
+            <p className="text-xs text-stone-500 max-w-sm mx-auto">
+              Try searching for traditional favorites like Avakaya, Kandi Podi, Bellam Gavvalu, or Chekodilu.
             </p>
             <button
               onClick={() => {
@@ -262,9 +260,9 @@ function FoodsContent() {
                 setSelectedCategory("all");
                 setVegOnly(false);
               }}
-              className="mt-5 px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition"
+              className="px-5 py-2.5 rounded-2xl bg-orange-600 text-white font-bold text-xs shadow-md shadow-orange-600/30 hover:bg-orange-700 transition"
             >
-              Show All Dishes
+              Clear Filters
             </button>
           </div>
         )}
@@ -277,14 +275,8 @@ export default function FoodsPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-7xl mx-auto px-4 py-16">
-          <Skeleton className="h-10 w-64 mb-4" />
-          <Skeleton className="h-14 w-full mb-8 rounded-2xl" />
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-72 w-full rounded-2xl" />
-            ))}
-          </div>
+        <div className="max-w-7xl mx-auto px-4 py-16 text-center text-xs text-stone-400">
+          Loading Hyderabad Homemade Foods...
         </div>
       }
     >

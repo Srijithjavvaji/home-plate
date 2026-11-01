@@ -382,3 +382,232 @@ create policy "Sellers can view deliveries for received orders" on public.delive
 create policy "Admins have full access to deliveries" on public.deliveries for all using (
   exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'admin')
 );
+
+-- ==============================================================================
+-- HOME PLATE - Phase 1 Schema Additions (Settings, Compliance, Payouts, Governance)
+-- ==============================================================================
+
+-- 16. APP SETTINGS (Configurable business variables)
+create table if not exists public.app_settings (
+  id uuid primary key default uuid_generate_v4(),
+  key text unique not null,
+  value jsonb not null,
+  description text,
+  updated_at timestamptz default now()
+);
+
+-- Seed default application settings
+insert into public.app_settings (key, value, description)
+values
+  ('min_order_value', '149'::jsonb, 'Configurable minimum order value in INR'),
+  ('free_delivery_threshold', '500'::jsonb, 'Order value above which delivery is free'),
+  ('base_delivery_fee', '40'::jsonb, 'Standard hyperlocal base delivery fee'),
+  ('tax_percentage', '5.0'::jsonb, 'Applicable GST/tax rate on food items'),
+  ('hyderabad_service_pincodes', '["500001","500002","500003","500004","500008","500016","500032","500033","500034","500081","500082","500084","500089","500090"]'::jsonb, 'Active serviceable pincodes in Hyderabad')
+on conflict (key) do nothing;
+
+-- 17. CATEGORY COMMISSIONS (Configurable commission percentages by category)
+create table if not exists public.category_commissions (
+  id uuid primary key default uuid_generate_v4(),
+  category_id uuid references public.categories(id) on delete cascade not null unique,
+  commission_percentage numeric(5, 2) not null check (commission_percentage >= 0 and commission_percentage <= 100) default 15.00,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 18. SELLER BANK DETAILS (Encrypted and isolated via strict RLS)
+create table if not exists public.seller_bank_details (
+  id uuid primary key default uuid_generate_v4(),
+  seller_id uuid references public.sellers(id) on delete cascade not null unique,
+  account_holder_name text not null,
+  account_number text not null,
+  ifsc_code text not null,
+  bank_name text not null,
+  upi_id text,
+  is_verified boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 19. SELLER DOCUMENTS (Government IDs, FSSAI certificates, Kitchen photos)
+create table if not exists public.seller_documents (
+  id uuid primary key default uuid_generate_v4(),
+  seller_id uuid references public.sellers(id) on delete cascade not null,
+  doc_type text not null check (doc_type in ('fssai_cert', 'gov_id_front', 'gov_id_back', 'kitchen_photo', 'other')),
+  file_url text not null,
+  status text check (status in ('pending', 'approved', 'rejected')) default 'pending',
+  rejection_reason text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 20. SELLER PAYOUTS (Daily settlement and commission deduction tracking)
+create table if not exists public.seller_payouts (
+  id uuid primary key default uuid_generate_v4(),
+  seller_id uuid references public.sellers(id) on delete cascade not null,
+  amount numeric(10, 2) not null check (amount > 0),
+  commission_deducted numeric(10, 2) not null default 0,
+  status text check (status in ('pending', 'eligible', 'processing', 'completed', 'failed')) default 'pending',
+  transaction_id text,
+  failure_reason text,
+  period_start timestamptz,
+  period_end timestamptz,
+  processed_at timestamptz,
+  created_at timestamptz default now()
+);
+
+-- 21. COMPLAINTS & DISPUTES
+create table if not exists public.complaints (
+  id uuid primary key default uuid_generate_v4(),
+  ticket_number text not null unique,
+  order_id uuid references public.orders(id) on delete cascade not null,
+  customer_id uuid references public.profiles(id) on delete cascade not null,
+  seller_id uuid references public.sellers(id) on delete set null,
+  category text check (category in (
+    'wrong_product',
+    'damaged_product',
+    'missing_items',
+    'poor_quality',
+    'spoiled',
+    'different_from_desc',
+    'packaging',
+    'delay',
+    'other'
+  )) not null,
+  description text not null,
+  photo_urls text[] default '{}',
+  status text check (status in ('open', 'under_investigation', 'approved_refund', 'rejected', 'resolved')) default 'open',
+  resolution_notes text,
+  resolved_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 22. REFUNDS (Online Razorpay or COD settlement tracking)
+create table if not exists public.refunds (
+  id uuid primary key default uuid_generate_v4(),
+  order_id uuid references public.orders(id) on delete cascade not null,
+  complaint_id uuid references public.complaints(id) on delete set null,
+  amount numeric(10, 2) not null check (amount > 0),
+  razorpay_refund_id text,
+  reason text not null,
+  status text check (status in ('pending_review', 'approved', 'processed', 'failed', 'rejected')) default 'pending_review',
+  reviewed_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 23. ADMIN AUDIT LOGS (Immutable record of administrative actions)
+create table if not exists public.admin_audit_logs (
+  id uuid primary key default uuid_generate_v4(),
+  actor_id uuid references public.profiles(id) on delete set null,
+  action text not null,
+  entity_type text not null,
+  entity_id text not null,
+  previous_data jsonb,
+  new_data jsonb,
+  created_at timestamptz default now()
+);
+
+-- 24. WEBHOOK EVENTS (Idempotency ledger for Razorpay & Shadowfax callbacks)
+create table if not exists public.webhook_events (
+  id uuid primary key default uuid_generate_v4(),
+  event_id text not null unique,
+  provider text not null check (provider in ('razorpay', 'shadowfax')),
+  event_type text not null,
+  payload jsonb not null,
+  processed_at timestamptz default now()
+);
+
+-- Alter existing tables with additive columns (safe migrations)
+alter table public.foods add column if not exists net_weight text;
+alter table public.foods add column if not exists shelf_life_days integer default 30;
+alter table public.foods add column if not exists prep_date date;
+alter table public.foods add column if not exists pack_date date;
+alter table public.foods add column if not exists best_before_date date;
+alter table public.foods add column if not exists preparation_type text default 'freshly_prepared';
+
+alter table public.orders add column if not exists parent_order_id text;
+alter table public.orders add column if not exists delivery_slot text default 'asap';
+alter table public.orders add column if not exists scheduled_at timestamptz;
+
+alter table public.deliveries add column if not exists delivery_otp text;
+alter table public.deliveries add column if not exists otp_verified boolean default false;
+
+-- Enable RLS on new tables
+alter table public.app_settings enable row level security;
+alter table public.category_commissions enable row level security;
+alter table public.seller_bank_details enable row level security;
+alter table public.seller_documents enable row level security;
+alter table public.seller_payouts enable row level security;
+alter table public.complaints enable row level security;
+alter table public.refunds enable row level security;
+alter table public.admin_audit_logs enable row level security;
+alter table public.webhook_events enable row level security;
+
+-- Policies for app_settings
+create policy "Allow public read on app_settings" on public.app_settings for select using (true);
+create policy "Admins can manage app_settings" on public.app_settings for all using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin', 'operations_admin'))
+);
+
+-- Policies for category_commissions
+create policy "Allow public read on category_commissions" on public.category_commissions for select using (true);
+create policy "Admins can manage category_commissions" on public.category_commissions for all using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin', 'operations_admin'))
+);
+
+-- Policies for seller_bank_details (Strictly owner and Super Admin only)
+create policy "Sellers can view own bank details" on public.seller_bank_details for select using (
+  exists (select 1 from public.sellers where sellers.id = seller_bank_details.seller_id and sellers.user_id = auth.uid())
+);
+create policy "Sellers can manage own bank details" on public.seller_bank_details for all using (
+  exists (select 1 from public.sellers where sellers.id = seller_bank_details.seller_id and sellers.user_id = auth.uid())
+);
+create policy "Admins can view seller bank details" on public.seller_bank_details for select using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin'))
+);
+
+-- Policies for seller_documents
+create policy "Sellers can view own documents" on public.seller_documents for select using (
+  exists (select 1 from public.sellers where sellers.id = seller_documents.seller_id and sellers.user_id = auth.uid())
+);
+create policy "Sellers can upload own documents" on public.seller_documents for insert with check (
+  exists (select 1 from public.sellers where sellers.id = seller_documents.seller_id and sellers.user_id = auth.uid())
+);
+create policy "Admins can manage seller documents" on public.seller_documents for all using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin', 'operations_admin', 'seller_support'))
+);
+
+-- Policies for seller_payouts
+create policy "Sellers can view own payouts" on public.seller_payouts for select using (
+  exists (select 1 from public.sellers where sellers.id = seller_payouts.seller_id and sellers.user_id = auth.uid())
+);
+create policy "Admins can manage seller payouts" on public.seller_payouts for all using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin', 'operations_admin'))
+);
+
+-- Policies for complaints
+create policy "Customers can view and create own complaints" on public.complaints for all using (auth.uid() = customer_id);
+create policy "Sellers can view complaints for own kitchen" on public.complaints for select using (
+  exists (select 1 from public.sellers where sellers.id = complaints.seller_id and sellers.user_id = auth.uid())
+);
+create policy "Admins can manage all complaints" on public.complaints for all using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin', 'operations_admin', 'seller_support'))
+);
+
+-- Policies for refunds
+create policy "Customers can view refunds for own orders" on public.refunds for select using (
+  exists (select 1 from public.orders where orders.id = refunds.order_id and orders.customer_id = auth.uid())
+);
+create policy "Admins can manage all refunds" on public.refunds for all using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin', 'operations_admin'))
+);
+
+-- Policies for admin audit logs
+create policy "Admins can view audit logs" on public.admin_audit_logs for select using (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin'))
+);
+create policy "Admins can insert audit logs" on public.admin_audit_logs for insert with check (
+  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'super_admin', 'operations_admin', 'seller_support'))
+);

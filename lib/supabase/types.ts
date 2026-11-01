@@ -1,4 +1,4 @@
-export type UserRole = "customer" | "seller" | "admin";
+export type UserRole = "customer" | "seller" | "admin" | "super_admin" | "operations_admin" | "seller_support";
 
 export type SellerStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -79,6 +79,7 @@ export interface Category {
   image_url: string;
   icon?: string;
   is_active: boolean;
+  times_used?: number;
   created_at?: string;
 }
 
@@ -96,12 +97,19 @@ export interface Food {
   prep_time_minutes: number;
   ingredients: string[];
   allergens?: string[];
+  net_weight?: string;
+  shelf_life_days?: number;
+  prep_date?: string;
+  pack_date?: string;
+  best_before_date?: string;
+  preparation_type?: "freshly_prepared" | "batch_packed" | "sun_cured" | "traditional";
   serving_info: string;
   rating: number;
   total_reviews: number;
   is_featured: boolean;
   image_url: string;
   created_at?: string;
+  updated_at?: string;
   seller?: Seller;
   category?: Category;
 }
@@ -165,6 +173,8 @@ export interface Delivery {
   tracking_url?: string;
   raw_response?: any;
   failure_reason?: string;
+  delivery_otp?: string;
+  otp_verified?: boolean;
   created_at: string;
   updated_at?: string;
   order?: Order;
@@ -199,6 +209,9 @@ export interface Order {
   razorpay_payment_id?: string;
   razorpay_signature?: string;
   notes?: string;
+  parent_order_id?: string;
+  delivery_slot?: "asap" | "scheduled";
+  scheduled_at?: string;
   estimated_delivery_at?: string;
   created_at: string;
   updated_at?: string;
@@ -228,4 +241,134 @@ export interface Coupon {
   min_order_amount: number;
   max_discount_amount?: number;
   is_active: boolean;
+  times_used?: number;
+  created_at?: string;
+}
+
+
+export interface AppSetting {
+  id: string;
+  key: string;
+  value: any;
+  description?: string;
+  updated_at?: string;
+}
+
+export interface CategoryCommission {
+  id: string;
+  category_id: string;
+  commission_percentage: number;
+  created_at?: string;
+  updated_at?: string;
+  category?: Category;
+}
+
+export interface SellerBankDetails {
+  id: string;
+  seller_id: string;
+  account_holder_name: string;
+  account_number: string;
+  ifsc_code: string;
+  bank_name: string;
+  upi_id?: string;
+  is_verified: boolean;
+  created_at?: string;
+}
+
+export interface SellerDocument {
+  id: string;
+  seller_id: string;
+  doc_type: "fssai_cert" | "gov_id_front" | "gov_id_back" | "kitchen_photo" | "other";
+  file_url: string;
+  status: "pending" | "approved" | "rejected";
+  rejection_reason?: string;
+  created_at?: string;
+}
+
+export interface SellerPayout {
+  id: string;
+  seller_id: string;
+  amount: number;
+  commission_deducted: number;
+  status: "pending" | "eligible" | "processing" | "completed" | "failed";
+  transaction_id?: string;
+  failure_reason?: string;
+  period_start?: string;
+  period_end?: string;
+  processed_at?: string;
+  created_at?: string;
+}
+
+export type ComplaintCategory =
+  | "wrong_product"
+  | "damaged_product"
+  | "missing_items"
+  | "poor_quality"
+  | "spoiled"
+  | "different_from_desc"
+  | "packaging"
+  | "delay"
+  | "other";
+
+export type ComplaintStatus =
+  | "open"
+  | "under_investigation"
+  | "approved_refund"
+  | "rejected"
+  | "resolved";
+
+export interface Complaint {
+  id: string;
+  ticket_number: string;
+  order_id: string;
+  customer_id: string;
+  seller_id?: string;
+  category: ComplaintCategory;
+  description: string;
+  photo_urls?: string[];
+  status: ComplaintStatus;
+  resolution_notes?: string;
+  resolved_by?: string;
+  created_at: string;
+  updated_at?: string;
+  order?: Order;
+  customer?: Profile;
+  seller?: Seller;
+}
+
+export type RefundStatus = "pending_review" | "approved" | "processed" | "failed" | "rejected";
+
+export interface Refund {
+  id: string;
+  order_id: string;
+  complaint_id?: string;
+  amount: number;
+  razorpay_refund_id?: string;
+  reason: string;
+  status: RefundStatus;
+  reviewed_by?: string;
+  created_at: string;
+  updated_at?: string;
+  order?: Order;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actor_id?: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  previous_data?: any;
+  new_data?: any;
+  created_at: string;
+  actor?: Profile;
+}
+
+export interface WebhookEvent {
+  id: string;
+  event_id: string;
+  provider: "razorpay" | "shadowfax";
+  event_type: string;
+  payload: any;
+  processed_at: string;
 }
