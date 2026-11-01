@@ -61,7 +61,7 @@ const HOMEMADE_SNACKS_SLIDES = [
     category: "Desi Ghee Sweets",
     cook: "Padma Vani • Gachibowli Kitchen",
     badge: "Pure Gir Cow Desi Ghee",
-    image: "https://images.unsplash.com/photo-1605197143984-747201b1cb40?w=900&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1599785209707-a456fc1337bb?w=900&auto=format&fit=crop&q=80",
   },
 ];
 
