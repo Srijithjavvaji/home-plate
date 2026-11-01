@@ -1,16 +1,45 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { store } from "@/lib/data/store";
-import { Hero } from "@/components/home/Hero";
-import { CategoriesSection } from "@/components/home/CategoriesSection";
-import { PopularFoodSection } from "@/components/home/PopularFoodSection";
-import { TopCooksSection } from "@/components/home/TopCooksSection";
-import { HowItWorks } from "@/components/home/HowItWorks";
-import { WhyChooseUs } from "@/components/home/WhyChooseUs";
-import { Testimonials } from "@/components/home/Testimonials";
-import { BecomeCookCTA } from "@/components/home/BecomeCookCTA";
+import { WelcomeLoginScreen } from "@/components/auth/WelcomeLoginScreen";
+import { HomeRootClient } from "@/components/home/HomeRootClient";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("homeplate_session")?.value;
+
+  let session: { id: string; role: string; email: string; sellerStatus?: string } | null = null;
+  if (sessionCookie) {
+    try {
+      session = JSON.parse(decodeURIComponent(sessionCookie));
+    } catch {
+      session = null;
+    }
+  }
+
+  // 1. Unauthenticated visitors see dedicated First Screen: Welcome / Login & Signup
+  if (!session) {
+    return <WelcomeLoginScreen />;
+  }
+
+  // 2. Authenticated Home Cook automatically redirected to Seller Dashboard
+  if (session.role === "seller") {
+    redirect("/seller/dashboard");
+  }
+
+  // 3. Authenticated Admin automatically redirected to Admin Dashboard
+  if (
+    session.role === "admin" ||
+    session.role === "super_admin" ||
+    session.role === "operations_admin" ||
+    session.role === "seller_support"
+  ) {
+    redirect("/admin");
+  }
+
+  // 4. Authenticated Customer: Fetch marketplace data and render customer marketplace
   const [foods, categories, sellers] = await Promise.all([
     store.getFoods(),
     store.getCategories(),
@@ -18,15 +47,10 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Hero />
-      <PopularFoodSection foods={foods} />
-      <CategoriesSection categories={categories} />
-      <TopCooksSection sellers={sellers} />
-      <HowItWorks />
-      <WhyChooseUs />
-      <Testimonials />
-      <BecomeCookCTA />
-    </div>
+    <HomeRootClient
+      foods={foods}
+      categories={categories}
+      sellers={sellers}
+    />
   );
 }

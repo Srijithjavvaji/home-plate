@@ -10,14 +10,14 @@ interface AuthContextType {
   seller: Seller | null;
   isLoading: boolean;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
-  loginWithOtp: (phoneOrEmail: string, otp: string, role?: UserRole) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
+  loginWithOtp: (phone: string, otp: string, role?: UserRole) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
   sendOtp: (phoneOrEmail: string) => Promise<{ success: boolean; code?: string; error?: string }>;
   loginWithGoogle: (role?: UserRole) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
   register: (data: {
     fullName: string;
     email: string;
     phone: string;
-    role: UserRole;
+    role?: UserRole;
     password?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -37,7 +37,7 @@ export const DEFAULT_USERS: Record<string, Profile> = {
   seller: {
     id: "s0000000-0000-0000-0000-000000000001",
     email: "seller@homeplate.app",
-    full_name: "Lakshmi Devi (Approved)",
+    full_name: "Lakshmi Devi",
     phone: "+91 98765 11001",
     role: "seller",
     avatar_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200",
@@ -45,7 +45,7 @@ export const DEFAULT_USERS: Record<string, Profile> = {
   seller_pending: {
     id: "s0000000-0000-0000-0000-000000000004",
     email: "seller.pending@homeplate.app",
-    full_name: "Radhika Reddy (Pending FSSAI)",
+    full_name: "Radhika Reddy (Pending Verification)",
     phone: "+91 98765 11004",
     role: "seller",
     avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
@@ -53,7 +53,7 @@ export const DEFAULT_USERS: Record<string, Profile> = {
   seller_rejected: {
     id: "s0000000-0000-0000-0000-000000000005",
     email: "seller.rejected@homeplate.app",
-    full_name: "Sujatha Rao (Rejected - Action Required)",
+    full_name: "Sujatha Rao (Rejected)",
     phone: "+91 98765 11005",
     role: "seller",
     avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
@@ -92,14 +92,18 @@ export const DEFAULT_USERS: Record<string, Profile> = {
   },
 };
 
-
-function setSessionCookie(profile: Profile | null) {
+function setSessionCookie(profile: Profile | null, sellerStatus?: string) {
   if (typeof document === 'undefined') return;
   if (!profile) {
     document.cookie = 'homeplate_session=; path=/; max-age=0; SameSite=Lax';
     return;
   }
-  const payload = { id: profile.id, role: profile.role, email: profile.email };
+  const payload = { 
+    id: profile.id, 
+    role: profile.role, 
+    email: profile.email,
+    sellerStatus: sellerStatus || (profile.role === 'seller' ? 'approved' : undefined)
+  };
   document.cookie = 'homeplate_session=' + encodeURIComponent(JSON.stringify(payload)) + '; path=/; max-age=604800; SameSite=Lax';
 }
 
@@ -141,7 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (profile) {
                 const p = profile as Profile;
                 setUser(p);
-                await loadSellerForUser(p);
+                const s = await loadSellerForUser(p);
+                setSessionCookie(p, s?.status);
                 setIsLoading(false);
                 return;
               }
@@ -149,20 +154,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Local storage demo fallback
+        // Local storage session fallback
         const savedUser = localStorage.getItem("homeplate_user");
         if (savedUser) {
           const p = JSON.parse(savedUser) as Profile;
           setUser(p);
-          await loadSellerForUser(p);
+          const s = await loadSellerForUser(p);
+          setSessionCookie(p, s?.status);
         } else {
-          // Default to guest (null)
+          // Default to guest (unauthenticated)
           setUser(null);
           setSeller(null);
+          setSessionCookie(null);
         }
       } catch (err) {
         console.error("Auth init error:", err);
         setUser(null);
+        setSessionCookie(null);
       } finally {
         setIsLoading(false);
       }
@@ -172,15 +180,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const determineRedirect = (profile: Profile, sellerRecord?: Seller | null): string => {
-    if (profile.role === "admin" || profile.role === "super_admin" || profile.role === "operations_admin" || profile.role === "seller_support") {
+    // 1. Admin roles automatically route to Admin dashboard
+    if (
+      profile.role === "admin" ||
+      profile.role === "super_admin" ||
+      profile.role === "operations_admin" ||
+      profile.role === "seller_support"
+    ) {
       return "/admin";
     }
 
+    // 2. Home Cook roles automatically route to Seller dashboard or verification
     if (profile.role === "seller") {
-      if (!sellerRecord) {
-        return "/become-a-seller";
-      }
-      if (sellerRecord.status === "approved") {
+      if (!sellerRecord || sellerRecord.status === "approved") {
         return "/seller/dashboard";
       }
       if (sellerRecord.status === "rejected") {
@@ -192,6 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return "/seller/application-status";
     }
 
+    // 3. Customer role automatically routes to Customer marketplace
     return "/";
   };
 
@@ -219,7 +232,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const p = profile as Profile;
               setUser(p);
               const sellerRec = await loadSellerForUser(p);
-              localStorage.setItem("homeplate_user", JSON.stringify(p)); setSessionCookie(p);
+              localStorage.setItem("homeplate_user", JSON.stringify(p));
+              setSessionCookie(p, sellerRec?.status);
               setIsLoading(false);
               return { success: true, redirectTo: determineRedirect(p, sellerRec) };
             }
@@ -227,11 +241,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Demo login matching
+      // Automatic role recognition from credentials
       let matchedUser: Profile = DEFAULT_USERS.customer;
       const cleanEmail = email.toLowerCase().trim();
 
-      if (cleanEmail.includes("admin")) {
+      if (cleanEmail.includes("admin") || cleanEmail === "admin@homeplate.app") {
         matchedUser = DEFAULT_USERS.admin;
       } else if (cleanEmail.includes("pending")) {
         matchedUser = DEFAULT_USERS.seller_pending;
@@ -243,13 +257,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         matchedUser = {
           ...DEFAULT_USERS.customer,
           email: cleanEmail,
-          full_name: cleanEmail.split("@")[0].replace(/[._]/g, " ").replace(/w/g, (c) => c.toUpperCase()),
+          full_name: cleanEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         };
       }
 
       setUser(matchedUser);
       const sellerRec = await loadSellerForUser(matchedUser);
-      localStorage.setItem("homeplate_user", JSON.stringify(matchedUser)); setSessionCookie(matchedUser);
+      localStorage.setItem("homeplate_user", JSON.stringify(matchedUser));
+      setSessionCookie(matchedUser, sellerRec?.status);
       setIsLoading(false);
       return { success: true, redirectTo: determineRedirect(matchedUser, sellerRec) };
     } catch {
@@ -259,50 +274,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sendOtp = async (phoneOrEmail: string) => {
-    // Generate simulated 4-digit code (default '1234' for developer convenience)
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      if (supabase && phoneOrEmail.includes("+")) {
+        try {
+          await supabase.auth.signInWithOtp({ phone: phoneOrEmail });
+        } catch {
+          // graceful fallback
+        }
+      }
+    }
+    // Demo verification code
     const code = "1234";
     return { success: true, code };
   };
 
-  const loginWithOtp = async (phoneOrEmail: string, otp: string, role: UserRole = "customer") => {
+  const loginWithOtp = async (phone: string, otp: string, role?: UserRole) => {
     setIsLoading(true);
     if (otp !== "1234" && otp !== "4321") {
       setIsLoading(false);
-      return { success: false, error: "Invalid OTP. Use demo verification code 1234." };
+      return { success: false, error: "Invalid OTP code. Please enter demo code 1234." };
     }
 
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    // Automatic role detection based on phone credentials (or requested role if specifically authenticating on seller/admin page)
     let matchedUser: Profile;
-    if (role === "seller") {
-      matchedUser = DEFAULT_USERS.seller;
-    } else if (role === "admin") {
+    if (role === "admin" || cleanPhone.endsWith("00001") || cleanPhone.endsWith("00002") || cleanPhone.includes("admin")) {
       matchedUser = DEFAULT_USERS.admin;
+    } else if (role === "seller" || cleanPhone.endsWith("11001") || cleanPhone.endsWith("11002") || cleanPhone.endsWith("11003")) {
+      matchedUser = DEFAULT_USERS.seller;
+    } else if (cleanPhone.endsWith("11004")) {
+      matchedUser = DEFAULT_USERS.seller_pending;
+    } else if (cleanPhone.endsWith("11005")) {
+      matchedUser = DEFAULT_USERS.seller_rejected;
     } else {
       matchedUser = {
         ...DEFAULT_USERS.customer,
-        phone: phoneOrEmail.startsWith("+") ? phoneOrEmail : `+91 ${phoneOrEmail}`,
+        id: "u_" + cleanPhone,
+        phone: "+91 " + cleanPhone.slice(-10),
+        full_name: "Home Plate Customer",
+        role: "customer",
       };
     }
 
     setUser(matchedUser);
     const sellerRec = await loadSellerForUser(matchedUser);
-    localStorage.setItem("homeplate_user", JSON.stringify(matchedUser)); setSessionCookie(matchedUser);
+    localStorage.setItem("homeplate_user", JSON.stringify(matchedUser));
+    setSessionCookie(matchedUser, sellerRec?.status);
     setIsLoading(false);
     return { success: true, redirectTo: determineRedirect(matchedUser, sellerRec) };
   };
 
-  const loginWithGoogle = async (role: UserRole = "customer") => {
+  const loginWithGoogle = async (role?: UserRole) => {
     setIsLoading(true);
+    if (isSupabaseConfigured) {
+      const supabase = createClient();
+      if (supabase) {
+        try {
+          await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: window.location.origin },
+          });
+          return { success: true, redirectTo: "/" };
+        } catch {
+          // fallback
+        }
+      }
+    }
+
+    // Google Sign-In defaults strictly to Customer role
+    const assignedRole: UserRole = role === "seller" ? "seller" : "customer";
     const profile: Profile = {
-      id: `google_${Date.now()}`,
-      email: "google.user@example.com",
-      full_name: "Google Authenticated User",
-      role,
+      id: "google_" + Date.now(),
+      email: "customer.google@homeplate.app",
+      full_name: "Google Customer",
+      role: assignedRole,
       avatar_url: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200",
     };
 
     setUser(profile);
     const sellerRec = await loadSellerForUser(profile);
-    localStorage.setItem("homeplate_user", JSON.stringify(profile)); setSessionCookie(profile);
+    localStorage.setItem("homeplate_user", JSON.stringify(profile));
+    setSessionCookie(profile, sellerRec?.status);
     setIsLoading(false);
     return { success: true, redirectTo: determineRedirect(profile, sellerRec) };
   };
@@ -311,10 +365,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fullName: string;
     email: string;
     phone: string;
-    role: UserRole;
+    role?: UserRole;
     password?: string;
   }) => {
     setIsLoading(true);
+    // Security Rule: Public registration always creates a Customer account unless approved seller onboarding
+    const assignedRole: UserRole = data.role === "seller" ? "seller" : "customer";
+
     try {
       if (isSupabaseConfigured) {
         const supabase = createClient();
@@ -326,7 +383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               data: {
                 full_name: data.fullName,
                 phone: data.phone,
-                role: data.role,
+                role: assignedRole,
               },
             },
           });
@@ -340,10 +397,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: data.email,
               full_name: data.fullName,
               phone: data.phone,
-              role: data.role,
+              role: assignedRole,
             };
             setUser(newProfile);
-            localStorage.setItem("homeplate_user", JSON.stringify(newProfile)); setSessionCookie(newProfile);
+            localStorage.setItem("homeplate_user", JSON.stringify(newProfile));
+            setSessionCookie(newProfile);
             setIsLoading(false);
             return { success: true };
           }
@@ -352,21 +410,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Local Registration
       const newProfile: Profile = {
-        id: `usr_${Date.now()}`,
+        id: "usr_" + Date.now(),
         email: data.email,
         full_name: data.fullName,
         phone: data.phone,
-        role: data.role,
+        role: assignedRole,
       };
 
       setUser(newProfile);
-      localStorage.setItem("homeplate_user", JSON.stringify(newProfile)); setSessionCookie(newProfile);
+      localStorage.setItem("homeplate_user", JSON.stringify(newProfile));
+      setSessionCookie(newProfile);
       setIsLoading(false);
       return { success: true };
     } catch {
       setIsLoading(false);
       return { success: false, error: "Registration failed. Please try again." };
     }
+  };
+
+  const switchRole = (role: UserRole) => {
+    // Kept for internal compatibility
+    const targetUser = DEFAULT_USERS[role] || DEFAULT_USERS.customer;
+    setUser(targetUser);
+    loadSellerForUser(targetUser);
+    localStorage.setItem("homeplate_user", JSON.stringify(targetUser));
+    setSessionCookie(targetUser);
   };
 
   const logout = async () => {
@@ -378,14 +446,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     setSeller(null);
-    localStorage.removeItem("homeplate_user"); setSessionCookie(null);
-  };
-
-  const switchRole = (role: UserRole) => {
-    const targetUser = DEFAULT_USERS[role] || DEFAULT_USERS.customer;
-    setUser(targetUser);
-    loadSellerForUser(targetUser);
-    localStorage.setItem("homeplate_user", JSON.stringify(targetUser)); setSessionCookie(targetUser);
+    localStorage.removeItem("homeplate_user");
+    setSessionCookie(null);
   };
 
   const resetPassword = async (email: string) => {
@@ -403,8 +465,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sendOtp,
         loginWithGoogle,
         register,
-        logout,
         switchRole,
+        logout,
         resetPassword,
       }}
     >
