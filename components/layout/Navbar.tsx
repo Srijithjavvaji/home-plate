@@ -84,6 +84,14 @@ export const Navbar: React.FC = () => {
               </button>
             </div>
 
+            <Link
+                href="/login"
+                className="text-orange-200 hover:text-white font-bold transition text-[11px] flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded border border-white/10"
+              >
+                <User className="w-3 h-3 text-orange-400" />
+                <span>Sign In</span>
+              </Link>
+
             {/* Quick Role Tester */}
             <div className="flex items-center gap-2">
               <span className="text-orange-300/80">Role:</span>
@@ -264,6 +272,15 @@ export const Navbar: React.FC = () => {
                       </Link>
                     )}
 
+                                        <Link
+                      href="/login"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs text-gray-700 hover:bg-orange-50 transition"
+                    >
+                      <User className="w-4 h-4 text-orange-600" />
+                      <span>Switch Account / Login Portal</span>
+                    </Link>
+
                     <div className="border-t border-gray-100 my-1" />
 
                     <button
@@ -375,6 +392,25 @@ export const Navbar: React.FC = () => {
               Sell Homemade Food
             </Link>
           </div>
+          {/* Mobile Login Section */}
+          <div className="pt-3 border-t border-orange-100 space-y-2">
+            <Link
+              href="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-orange-600 text-white font-bold text-xs shadow-md shadow-orange-600/20"
+            >
+              <User className="w-4 h-4" />
+              <span>Login / Sign In to Home Plate</span>
+            </Link>
+            <Link
+              href="/register"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 font-bold text-xs hover:bg-orange-100 transition"
+            >
+              <span>Create Customer Account</span>
+            </Link>
+          </div>
+
         </div>
       )}
     </header>
