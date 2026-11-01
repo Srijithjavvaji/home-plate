@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -26,7 +26,7 @@ import { UserRole } from "@/lib/supabase/types";
 
 export const Navbar: React.FC = () => {
   const router = useRouter();
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout, switchRole, seller } = useAuth();
   const { totalItemsCount } = useCart();
   const { wishlist } = useWishlist();
   const { language, setLanguage, t } = useLanguage();
@@ -152,7 +152,7 @@ export const Navbar: React.FC = () => {
               {t("top_cooks", "Home Cooks")}
             </Link>
             <Link
-              href="/become-a-seller"
+              href="/seller/register"
               className="text-orange-700 font-semibold hover:text-orange-800 transition flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-200/70"
             >
               <ChefHat className="w-4 h-4 text-orange-600" />
@@ -240,12 +240,16 @@ export const Navbar: React.FC = () => {
 
                     {user.role === "seller" && (
                       <Link
-                        href="/seller/dashboard"
+                        href={seller?.status === "approved" ? "/seller/dashboard" : "/seller/application-status"}
                         onClick={() => setUserDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2 text-xs text-orange-700 font-semibold hover:bg-orange-50 transition"
                       >
                         <ChefHat className="w-4 h-4 text-orange-600" />
-                        <span>Seller Kitchen Dashboard</span>
+                        <span>
+                          {seller?.status === "approved"
+                            ? "Seller Kitchen Dashboard"
+                            : "Kitchen Application Status"}
+                        </span>
                       </Link>
                     )}
 
@@ -364,7 +368,7 @@ export const Navbar: React.FC = () => {
               Home Cooks
             </Link>
             <Link
-              href="/become-a-seller"
+              href="/seller/register"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-orange-700 font-semibold hover:bg-orange-50"
             >

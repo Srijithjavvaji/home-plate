@@ -1,13 +1,18 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Profile, UserRole } from "../supabase/types";
+import { Profile, UserRole, Seller } from "../supabase/types";
 import { createClient, isSupabaseConfigured } from "../supabase/client";
+import { store } from "../data/store";
 
 interface AuthContextType {
   user: Profile | null;
+  seller: Seller | null;
   isLoading: boolean;
-  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
+  loginWithOtp: (phoneOrEmail: string, otp: string, role?: UserRole) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
+  sendOtp: (phoneOrEmail: string) => Promise<{ success: boolean; code?: string; error?: string }>;
+  loginWithGoogle: (role?: UserRole) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
   register: (data: {
     fullName: string;
     email: string;
@@ -17,9 +22,10 @@ interface AuthContextType {
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   switchRole: (role: UserRole) => void;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
-const DEFAULT_USERS: Record<UserRole, Profile> = {
+export const DEFAULT_USERS: Record<string, Profile> = {
   customer: {
     id: "u0000000-0000-0000-0000-000000000001",
     email: "customer@homeplate.app",
@@ -30,16 +36,32 @@ const DEFAULT_USERS: Record<UserRole, Profile> = {
   },
   seller: {
     id: "s0000000-0000-0000-0000-000000000001",
-    email: "lakshmi@ammamma.com",
-    full_name: "Lakshmi Devi",
+    email: "seller@homeplate.app",
+    full_name: "Lakshmi Devi (Approved)",
     phone: "+91 98765 11001",
     role: "seller",
     avatar_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200",
   },
+  seller_pending: {
+    id: "s0000000-0000-0000-0000-000000000004",
+    email: "seller.pending@homeplate.app",
+    full_name: "Radhika Reddy (Pending FSSAI)",
+    phone: "+91 98765 11004",
+    role: "seller",
+    avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
+  },
+  seller_rejected: {
+    id: "s0000000-0000-0000-0000-000000000005",
+    email: "seller.rejected@homeplate.app",
+    full_name: "Sujatha Rao (Rejected - Action Required)",
+    phone: "+91 98765 11005",
+    role: "seller",
+    avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
+  },
   admin: {
     id: "a0000000-0000-0000-0000-000000000001",
     email: "admin@homeplate.app",
-    full_name: "Home Plate Admin",
+    full_name: "Home Plate Administrator",
     phone: "+91 98765 00001",
     role: "admin",
     avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
@@ -70,14 +92,39 @@ const DEFAULT_USERS: Record<UserRole, Profile> = {
   },
 };
 
+
+function setSessionCookie(profile: Profile | null) {
+  if (typeof document === 'undefined') return;
+  if (!profile) {
+    document.cookie = 'homeplate_session=; path=/; max-age=0; SameSite=Lax';
+    return;
+  }
+  const payload = { id: profile.id, role: profile.role, email: profile.email };
+  document.cookie = 'homeplate_session=' + encodeURIComponent(JSON.stringify(payload)) + '; path=/; max-age=604800; SameSite=Lax';
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
+  const [seller, setSeller] = useState<Seller | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Helper to load seller profile for authenticated seller user
+  const loadSellerForUser = async (profile: Profile) => {
+    if (profile.role === "seller") {
+      const sellers = await store.getSellers();
+      const match = sellers.find((s) => s.user_id === profile.id || s.phone === profile.phone);
+      if (match) {
+        setSeller(match);
+        return match;
+      }
+    }
+    setSeller(null);
+    return null;
+  };
+
   useEffect(() => {
-    // Check local storage or Supabase session
     const initAuth = async () => {
       try {
         if (isSupabaseConfigured) {
@@ -92,7 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single();
 
               if (profile) {
-                setUser(profile as Profile);
+                const p = profile as Profile;
+                setUser(p);
+                await loadSellerForUser(p);
                 setIsLoading(false);
                 return;
               }
@@ -103,14 +152,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Local storage demo fallback
         const savedUser = localStorage.getItem("homeplate_user");
         if (savedUser) {
-          setUser(JSON.parse(savedUser));
+          const p = JSON.parse(savedUser) as Profile;
+          setUser(p);
+          await loadSellerForUser(p);
         } else {
-          // Default to customer demo user
-          setUser(DEFAULT_USERS.customer);
+          // Default to guest (null)
+          setUser(null);
+          setSeller(null);
         }
       } catch (err) {
         console.error("Auth init error:", err);
-        setUser(DEFAULT_USERS.customer);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -118,6 +170,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
   }, []);
+
+  const determineRedirect = (profile: Profile, sellerRecord?: Seller | null): string => {
+    if (profile.role === "admin" || profile.role === "super_admin" || profile.role === "operations_admin" || profile.role === "seller_support") {
+      return "/admin";
+    }
+
+    if (profile.role === "seller") {
+      if (!sellerRecord) {
+        return "/become-a-seller";
+      }
+      if (sellerRecord.status === "approved") {
+        return "/seller/dashboard";
+      }
+      if (sellerRecord.status === "rejected") {
+        return "/seller/application-status?status=rejected";
+      }
+      if (sellerRecord.status === "suspended") {
+        return "/seller/application-status?status=suspended";
+      }
+      return "/seller/application-status";
+    }
+
+    return "/";
+  };
 
   const login = async (email: string, password?: string) => {
     setIsLoading(true);
@@ -140,37 +216,95 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .eq("id", data.user.id)
               .single();
             if (profile) {
-              setUser(profile as Profile);
-              localStorage.setItem("homeplate_user", JSON.stringify(profile));
+              const p = profile as Profile;
+              setUser(p);
+              const sellerRec = await loadSellerForUser(p);
+              localStorage.setItem("homeplate_user", JSON.stringify(p)); setSessionCookie(p);
               setIsLoading(false);
-              return { success: true };
+              return { success: true, redirectTo: determineRedirect(p, sellerRec) };
             }
           }
         }
       }
 
-      // Demo login
+      // Demo login matching
       let matchedUser: Profile = DEFAULT_USERS.customer;
-      if (email.includes("admin")) {
+      const cleanEmail = email.toLowerCase().trim();
+
+      if (cleanEmail.includes("admin")) {
         matchedUser = DEFAULT_USERS.admin;
-      } else if (email.includes("seller") || email.includes("lakshmi") || email.includes("cook")) {
+      } else if (cleanEmail.includes("pending")) {
+        matchedUser = DEFAULT_USERS.seller_pending;
+      } else if (cleanEmail.includes("rejected")) {
+        matchedUser = DEFAULT_USERS.seller_rejected;
+      } else if (cleanEmail.includes("seller") || cleanEmail.includes("lakshmi") || cleanEmail.includes("cook")) {
         matchedUser = DEFAULT_USERS.seller;
       } else {
         matchedUser = {
           ...DEFAULT_USERS.customer,
-          email,
-          full_name: email.split("@")[0].replace(/[._]/g, " "),
+          email: cleanEmail,
+          full_name: cleanEmail.split("@")[0].replace(/[._]/g, " ").replace(/w/g, (c) => c.toUpperCase()),
         };
       }
 
       setUser(matchedUser);
-      localStorage.setItem("homeplate_user", JSON.stringify(matchedUser));
+      const sellerRec = await loadSellerForUser(matchedUser);
+      localStorage.setItem("homeplate_user", JSON.stringify(matchedUser)); setSessionCookie(matchedUser);
       setIsLoading(false);
-      return { success: true };
+      return { success: true, redirectTo: determineRedirect(matchedUser, sellerRec) };
     } catch {
       setIsLoading(false);
       return { success: false, error: "An unexpected error occurred during login." };
     }
+  };
+
+  const sendOtp = async (phoneOrEmail: string) => {
+    // Generate simulated 4-digit code (default '1234' for developer convenience)
+    const code = "1234";
+    return { success: true, code };
+  };
+
+  const loginWithOtp = async (phoneOrEmail: string, otp: string, role: UserRole = "customer") => {
+    setIsLoading(true);
+    if (otp !== "1234" && otp !== "4321") {
+      setIsLoading(false);
+      return { success: false, error: "Invalid OTP. Use demo verification code 1234." };
+    }
+
+    let matchedUser: Profile;
+    if (role === "seller") {
+      matchedUser = DEFAULT_USERS.seller;
+    } else if (role === "admin") {
+      matchedUser = DEFAULT_USERS.admin;
+    } else {
+      matchedUser = {
+        ...DEFAULT_USERS.customer,
+        phone: phoneOrEmail.startsWith("+") ? phoneOrEmail : `+91 ${phoneOrEmail}`,
+      };
+    }
+
+    setUser(matchedUser);
+    const sellerRec = await loadSellerForUser(matchedUser);
+    localStorage.setItem("homeplate_user", JSON.stringify(matchedUser)); setSessionCookie(matchedUser);
+    setIsLoading(false);
+    return { success: true, redirectTo: determineRedirect(matchedUser, sellerRec) };
+  };
+
+  const loginWithGoogle = async (role: UserRole = "customer") => {
+    setIsLoading(true);
+    const profile: Profile = {
+      id: `google_${Date.now()}`,
+      email: "google.user@example.com",
+      full_name: "Google Authenticated User",
+      role,
+      avatar_url: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200",
+    };
+
+    setUser(profile);
+    const sellerRec = await loadSellerForUser(profile);
+    localStorage.setItem("homeplate_user", JSON.stringify(profile)); setSessionCookie(profile);
+    setIsLoading(false);
+    return { success: true, redirectTo: determineRedirect(profile, sellerRec) };
   };
 
   const register = async (data: {
@@ -209,14 +343,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               role: data.role,
             };
             setUser(newProfile);
-            localStorage.setItem("homeplate_user", JSON.stringify(newProfile));
+            localStorage.setItem("homeplate_user", JSON.stringify(newProfile)); setSessionCookie(newProfile);
             setIsLoading(false);
             return { success: true };
           }
         }
       }
 
-      // Demo registration
+      // Local Registration
       const newProfile: Profile = {
         id: `usr_${Date.now()}`,
         email: data.email,
@@ -226,7 +360,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       setUser(newProfile);
-      localStorage.setItem("homeplate_user", JSON.stringify(newProfile));
+      localStorage.setItem("homeplate_user", JSON.stringify(newProfile)); setSessionCookie(newProfile);
       setIsLoading(false);
       return { success: true };
     } catch {
@@ -243,17 +377,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     setUser(null);
-    localStorage.removeItem("homeplate_user");
+    setSeller(null);
+    localStorage.removeItem("homeplate_user"); setSessionCookie(null);
   };
 
   const switchRole = (role: UserRole) => {
-    const targetUser = DEFAULT_USERS[role];
+    const targetUser = DEFAULT_USERS[role] || DEFAULT_USERS.customer;
     setUser(targetUser);
-    localStorage.setItem("homeplate_user", JSON.stringify(targetUser));
+    loadSellerForUser(targetUser);
+    localStorage.setItem("homeplate_user", JSON.stringify(targetUser)); setSessionCookie(targetUser);
+  };
+
+  const resetPassword = async (email: string) => {
+    return { success: true };
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, switchRole }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        seller,
+        isLoading,
+        login,
+        loginWithOtp,
+        sendOtp,
+        loginWithGoogle,
+        register,
+        logout,
+        switchRole,
+        resetPassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
