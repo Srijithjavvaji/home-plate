@@ -1,12 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Retrieve session cookie
   const sessionCookie = request.cookies.get("homeplate_session")?.value;
-  let session: { id: string; role: string; email: string } | null = null;
+  let session: { id: string; role: string; email: string; sellerStatus?: string } | null = null;
 
   if (sessionCookie) {
     try {
@@ -47,8 +46,20 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // Role check: Customers and non-sellers cannot access seller operational routes
     if (session.role !== "seller") {
       const statusUrl = new URL("/seller/application-status", request.url);
+      return NextResponse.redirect(statusUrl);
+    }
+
+    // Server-side enforcement: Only approved sellers can access seller operational dashboard!
+    if (session.sellerStatus && session.sellerStatus !== "approved") {
+      const statusUrl = new URL("/seller/application-status", request.url);
+      if (session.sellerStatus === "rejected") {
+        statusUrl.searchParams.set("status", "rejected");
+      } else if (session.sellerStatus === "suspended") {
+        statusUrl.searchParams.set("status", "suspended");
+      }
       return NextResponse.redirect(statusUrl);
     }
   }

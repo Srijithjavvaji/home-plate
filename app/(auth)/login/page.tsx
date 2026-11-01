@@ -2,12 +2,10 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useToast } from "@/lib/context/ToastContext";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import {
   UtensilsCrossed,
   Lock,
@@ -23,6 +21,11 @@ import {
   Clock,
   HeartHandshake,
   Star,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  FileCheck2,
+  Award,
 } from "lucide-react";
 import { UserRole } from "@/lib/supabase/types";
 
@@ -40,12 +43,16 @@ function LoginForm() {
   const [authMethod, setAuthMethod] = useState<"password" | "otp">("password");
 
   // Form Fields
-  const [email, setEmail] = useState("");
+  const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
+
+  // Admin Security Field
+  const [securityPin, setSecurityPin] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -54,36 +61,47 @@ function LoginForm() {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-    setIsLoading(true);
 
-    const res = await login(email, password);
+    if (!emailOrPhone.trim()) {
+      setErrorMessage("Please enter your registered email address.");
+      return;
+    }
+    if (!password) {
+      setErrorMessage("Please enter your password.");
+      return;
+    }
+
+    setIsLoading(true);
+    const res = await login(emailOrPhone.trim(), password);
     setIsLoading(false);
 
     if (res.success) {
-      success("Welcome Back!", "Signed in successfully.");
+      success("Welcome Back to Home Plate!", "Signed in successfully.");
       router.push(res.redirectTo || "/");
     } else {
-      setErrorMessage(res.error || "Invalid email or password.");
-      toastError("Login Failed", res.error || "Please check your credentials.");
+      setErrorMessage(res.error || "Invalid login credentials. Please check your details.");
+      toastError("Authentication Failed", res.error || "Please verify your credentials.");
     }
   };
 
   // Handle Send OTP
   const handleSendOtp = async () => {
-    if (!phone || phone.length < 10) {
-      setErrorMessage("Please enter a valid 10-digit mobile number.");
+    const rawDigits = phone.replace(/\D/g, "");
+    if (rawDigits.length < 10) {
+      setErrorMessage("Please enter a valid 10-digit Indian mobile number.");
       return;
     }
     setErrorMessage("");
     setIsLoading(true);
     const res = await sendOtp(phone);
     setIsLoading(false);
+
     if (res.success) {
       setOtpSent(true);
       setOtpCooldown(30);
-      success("OTP Sent!", "Use demo code: 1234");
+      success("Verification Code Sent!", "Use demo OTP: 1234");
     } else {
-      setErrorMessage(res.error || "Failed to send OTP.");
+      setErrorMessage(res.error || "Failed to dispatch SMS verification code.");
     }
   };
 
@@ -91,16 +109,21 @@ function LoginForm() {
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-    setIsLoading(true);
 
-    const res = await loginWithOtp(phone, otp, activeTab);
+    if (!otp.trim()) {
+      setErrorMessage("Please enter the 4-digit verification code.");
+      return;
+    }
+
+    setIsLoading(true);
+    const res = await loginWithOtp(phone, otp.trim(), activeTab);
     setIsLoading(false);
 
     if (res.success) {
-      success("Phone Verified!", "Signed in successfully.");
+      success("Mobile Verified!", "Welcome back to Home Plate.");
       router.push(res.redirectTo || "/");
     } else {
-      setErrorMessage(res.error || "Invalid OTP code.");
+      setErrorMessage(res.error || "Invalid OTP code. Please enter demo code 1234.");
       toastError("Verification Failed", res.error || "Please check your OTP.");
     }
   };
@@ -116,10 +139,11 @@ function LoginForm() {
     }
   };
 
-  // One-Click Fast Demo Credentials
-  const handleQuickDemoLogin = async (demoEmail: string, roleTitle: string) => {
-    setEmail(demoEmail);
+  // Quick 1-Click Fast Credentials for Pairwise Testing
+  const handleAutofill = async (demoEmail: string, roleTitle: string) => {
+    setEmailOrPhone(demoEmail);
     setPassword("password123");
+    setErrorMessage("");
     setIsLoading(true);
     const res = await login(demoEmail, "password123");
     setIsLoading(false);
@@ -131,29 +155,29 @@ function LoginForm() {
 
   return (
     <div className="min-h-[92vh] flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 bg-[#fffdfa]">
-      {/* 2-Column Responsive Card: Food Photography + Modern Login Card */}
-      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl border border-orange-100 shadow-card overflow-hidden">
+      {/* 2-Column Responsive Card: Left Food Photography + Right Modern Login Card */}
+      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl border border-orange-100 shadow-xl shadow-orange-950/5 overflow-hidden">
         
-        {/* Left Column: Brand & Authentic Food Photography Showcase (Desktop) */}
+        {/* Left Column: Authentic Homemade Food Showcase (Desktop & Tablet landscape) */}
         <div className="hidden lg:flex lg:col-span-5 flex-col justify-between p-8 bg-gradient-to-br from-[#26140e] via-[#3d1e15] to-[#1a0c08] text-white relative overflow-hidden">
-          {/* Subtle Background Pattern */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.15),transparent_50%)]" />
+          {/* Subtle Background Radial Glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(234,88,12,0.18),transparent_55%)] pointer-events-none" />
 
-          {/* Top Brand Tag */}
-          <div className="relative z-10 space-y-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-md shadow-orange-600/40">
+          {/* Top Brand Header */}
+          <div className="relative z-10 space-y-2.5">
+            <Link href="/" className="inline-flex items-center gap-2.5 group">
+              <div className="w-10 h-10 rounded-2xl bg-orange-600 flex items-center justify-center text-white shadow-md shadow-orange-600/40 group-hover:scale-105 transition-transform duration-300">
                 <UtensilsCrossed className="w-5 h-5" />
               </div>
               <div>
-                <span className="font-extrabold text-lg tracking-tight text-white">
+                <span className="font-extrabold text-xl tracking-tight text-white">
                   HOME<span className="text-orange-500">PLATE</span>
                 </span>
-                <p className="text-[9px] uppercase tracking-wider text-orange-200/80 font-semibold leading-none">
+                <p className="text-[9px] uppercase tracking-wider text-orange-200/80 font-bold leading-none">
                   Hyderabad, Telangana
                 </p>
               </div>
-            </div>
+            </Link>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold text-orange-200 border border-white/10">
               <Sparkles className="w-3.5 h-3.5 text-orange-400" />
@@ -161,74 +185,70 @@ function LoginForm() {
             </div>
           </div>
 
-          {/* Center Homemade Food Photograph Card */}
-          <div className="relative z-10 my-6">
+          {/* Center Homemade Food Showcase Card */}
+          <div className="relative z-10 my-4 space-y-4">
             <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl group">
               <img
                 src="https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?auto=format&fit=crop&w=800&q=80"
-                alt="Authentic Homemade Pickles and Traditional Telangana Sweets"
-                className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500"
+                alt="Traditional Andhra & Telangana Homemade Pickles and Sweets"
+                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-orange-300">
-                  Daily Fresh Batches
-                </span>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-4">
+                <div className="flex items-center gap-1.5 text-amber-400 text-xs font-bold mb-0.5">
+                  <Award className="w-3.5 h-3.5" />
+                  <span>100% Verified Home Kitchens</span>
+                </div>
                 <p className="text-sm font-bold text-white leading-snug">
-                  Avakaya, Gongura Pickles & Traditional Sweets
+                  Avakaya, Gongura Pickles & Ghee Sweets
                 </p>
                 <div className="flex items-center gap-1 mt-1 text-amber-400 text-xs">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="w-3 h-3 fill-amber-400" />
                   ))}
-                  <span className="text-[11px] text-white/90 ml-1 font-semibold">4.9 / 5 (3,400+ reviews)</span>
+                  <span className="text-[11px] text-white/90 ml-1 font-semibold">4.9 / 5 (3,400+ orders)</span>
                 </div>
               </div>
             </div>
 
-            {/* Testimonial Quote */}
-            <div className="mt-4 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-xs text-orange-100/90 leading-relaxed italic">
-              &ldquo;The taste of Sunnundalu and Mango Avakaya brings tears to my eyes. Exactly how my grandmother made them in Guntur with pure wood-pressed gingelly oil.&rdquo;
-              <p className="not-italic text-[10px] font-bold text-orange-400 mt-1">
+            {/* Authentic Customer Testimonial */}
+            <div className="p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 text-xs text-orange-100/90 leading-relaxed italic">
+              &ldquo;The taste of Bellam Sunnundalu and Mango Avakaya brings tears of joy. It tastes exactly like my grandmother’s kitchen in Guntur.&rdquo;
+              <p className="not-italic text-[10px] font-bold text-orange-400 mt-1.5">
                 — Sravanthi K., Jubilee Hills, Hyderabad
               </p>
             </div>
           </div>
 
           {/* Bottom Trust Badges */}
-          <div className="relative z-10 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-orange-200/80">
-            <span className="flex items-center gap-1.5">
+          <div className="relative z-10 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-orange-200/80">
+            <span className="flex items-center gap-1.5 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
-              <span>100% FSSAI Compliant</span>
+              <span>FSSAI Compliant</span>
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
               <HeartHandshake className="w-3.5 h-3.5 text-orange-400" />
-              <span>Direct Cook Payouts</span>
+              <span>Direct Cook Settlements</span>
             </span>
           </div>
         </div>
 
         {/* Right Column: Modern Login Card & Form */}
-        <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center space-y-6">
+        <div className="lg:col-span-7 p-6 sm:p-9 flex flex-col justify-center space-y-5">
           {/* Brand Header */}
-          <div className="text-center sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start gap-2.5 mb-2">
-              <div className="w-11 h-11 rounded-2xl bg-orange-600 flex items-center justify-center text-white shadow-md shadow-orange-600/30">
-                <UtensilsCrossed className="w-6 h-6" />
+          <div className="text-center sm:text-left space-y-1">
+            <div className="flex items-center justify-center sm:justify-start gap-2.5 mb-1.5 lg:hidden">
+              <div className="w-10 h-10 rounded-2xl bg-orange-600 flex items-center justify-center text-white shadow-md shadow-orange-600/30">
+                <UtensilsCrossed className="w-5 h-5" />
               </div>
-              <div>
-                <span className="font-extrabold text-xl tracking-tight text-[#26140e]">
-                  HOME<span className="text-orange-600">PLATE</span>
-                </span>
-                <p className="text-[9px] uppercase tracking-wider text-[#7c5946] font-semibold leading-none">
-                  Homemade Marketplace
-                </p>
-              </div>
+              <span className="font-extrabold text-xl tracking-tight text-[#26140e]">
+                HOME<span className="text-orange-600">PLATE</span>
+              </span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26140e] tracking-tight">
               Welcome Back to Home Plate
             </h1>
-            <p className="text-xs text-stone-500 mt-1">
+            <p className="text-xs text-stone-500">
               Discover homemade goodness or share your homemade creations.
             </p>
           </div>
@@ -247,7 +267,7 @@ function LoginForm() {
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <User className="w-3.5 h-3.5" />
+              <User className="w-3.5 h-3.5 text-orange-600" />
               <span>Customer</span>
             </button>
 
@@ -263,7 +283,7 @@ function LoginForm() {
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <ChefHat className="w-3.5 h-3.5" />
+              <ChefHat className="w-3.5 h-3.5 text-orange-600" />
               <span>Home Cook</span>
             </button>
 
@@ -275,7 +295,7 @@ function LoginForm() {
               }}
               className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl transition-all ${
                 activeTab === "admin"
-                  ? "bg-stone-900 text-white shadow-sm"
+                  ? "bg-slate-900 text-white shadow-sm"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
@@ -284,36 +304,43 @@ function LoginForm() {
             </button>
           </div>
 
-          {/* Role Status Explainer for Sellers */}
+          {/* FSSAI Verification Status Banner for Sellers */}
           {activeTab === "seller" && (
-            <div className="p-3 bg-orange-50/70 rounded-2xl border border-orange-200/80 text-[11px] text-stone-700 space-y-1">
-              <p className="font-bold text-orange-950 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-orange-600" />
-                <span>Cook Partner Verification Gateway:</span>
-              </p>
-              <p>• <strong>Approved:</strong> Seller Kitchen Dashboard</p>
-              <p>• <strong>Pending FSSAI:</strong> Application Status Tracker</p>
-              <p>• <strong>Rejected / Suspended:</strong> Information & Appeal page</p>
-            </div>
-          )}
-
-          {/* Role Explainer for Admin */}
-          {activeTab === "admin" && (
-            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 flex items-start justify-between gap-2">
-              <div>
-                <p className="font-bold">Staff & Security Portal</p>
-                <p>No public registration. Session is encrypted & audit-logged.</p>
+            <div className="p-3.5 bg-orange-50/80 rounded-2xl border border-orange-200/90 text-[11px] text-stone-700 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-orange-950 flex items-center gap-1.5">
+                  <FileCheck2 className="w-4 h-4 text-orange-600" />
+                  <span>FSSAI Food Safety Gateway:</span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 text-orange-800 border border-orange-200">
+                  Required
+                </span>
               </div>
-              <Link
-                href="/admin/login"
-                className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 rounded-lg font-bold text-[10px] shrink-0"
-              >
-                Open Admin Portal &rarr;
-              </Link>
+              <p className="text-[11px] text-stone-600 leading-snug">
+                Only fully verified and admin-approved home cooks can list foods. Pending, rejected, or suspended sellers will be directed to their status tracking portal.
+              </p>
             </div>
           )}
 
-          {/* Method Switcher: Password vs OTP (Customer and Seller only) */}
+          {/* Admin Security Banner */}
+          {activeTab === "admin" && (
+            <div className="p-3.5 bg-slate-900 text-slate-200 rounded-2xl border border-slate-800 text-[11px] space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Restricted Security Portal</span>
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300">
+                  256-Bit SSL
+                </span>
+              </div>
+              <p className="text-slate-400 text-[11px]">
+                Authorized operations personnel and food safety inspectors only. Public registration is disabled.
+              </p>
+            </div>
+          )}
+
+          {/* Method Switcher: Password vs Mobile OTP (Customer and Seller only) */}
           {activeTab !== "admin" && (
             <div className="flex rounded-xl bg-stone-100 p-1 text-xs font-semibold">
               <button
@@ -349,35 +376,41 @@ function LoginForm() {
 
           {/* Error Alert */}
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 animate-in fade-in">
-              {errorMessage}
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Method 1: Email & Password */}
+          {/* Method 1: Email/Mobile & Password */}
           {authMethod === "password" || activeTab === "admin" ? (
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <Input
-                label={
-                  activeTab === "customer"
-                    ? "Customer Email"
+            <form onSubmit={handlePasswordSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  {activeTab === "customer"
+                    ? "Email Address"
                     : activeTab === "seller"
-                    ? "Registered Seller Email"
-                    : "Administrator Email"
-                }
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={
-                  activeTab === "customer"
-                    ? "customer@homeplate.app"
-                    : activeTab === "seller"
-                    ? "seller@homeplate.app"
-                    : "admin@homeplate.app"
-                }
-                leftIcon={<Mail className="w-4 h-4 text-stone-400" />}
-              />
+                    ? "Registered Seller Email or Phone"
+                    : "Administrator Email"}
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
+                  <input
+                    type={activeTab === "seller" ? "text" : "email"}
+                    required
+                    value={emailOrPhone}
+                    onChange={(e) => setEmailOrPhone(e.target.value)}
+                    placeholder={
+                      activeTab === "customer"
+                        ? "customer@homeplate.app"
+                        : activeTab === "seller"
+                        ? "seller@homeplate.app or 98765 11001"
+                        : "admin@homeplate.app"
+                    }
+                    className="w-full bg-[#fffdfa] border border-orange-200/90 rounded-xl pl-10 pr-4 py-2.5 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  />
+                </div>
+              </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -391,79 +424,116 @@ function LoginForm() {
                     </Link>
                   )}
                 </div>
-                <Input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  leftIcon={<Lock className="w-4 h-4 text-stone-400" />}
-                />
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full bg-[#fffdfa] border border-orange-200/90 rounded-xl pl-10 pr-10 py-2.5 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 p-0.5"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
+
+              {activeTab === "admin" && (
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    2FA Security Token / PIN (Optional for Demo)
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={securityPin}
+                      onChange={(e) => setSecurityPin(e.target.value)}
+                      placeholder="Default: 9999"
+                      className="w-full bg-[#fffdfa] border border-orange-200/90 rounded-xl pl-10 pr-4 py-2.5 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
 
               <Button
                 type="submit"
                 isLoading={isLoading}
-                className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-md shadow-orange-600/20"
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-md shadow-orange-600/20 transition-all"
               >
                 {activeTab === "customer"
-                  ? "Sign In as Customer"
+                  ? "Sign In to Order"
                   : activeTab === "seller"
-                  ? "Access Seller Kitchen"
+                  ? "Sign In to Kitchen Dashboard"
                   : "Authenticate Admin Session"}
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </form>
           ) : (
-            /* Method 2: Mobile Number & OTP */
-            <form onSubmit={handleOtpSubmit} className="space-y-4">
+            /* Method 2: Mobile Number & OTP (Customer & Seller) */
+            <form onSubmit={handleOtpSubmit} className="space-y-3.5">
               <div>
-                <Input
-                  label="Registered Mobile Number"
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="9876543210"
-                  leftIcon={<Phone className="w-4 h-4 text-stone-400" />}
-                  helperText="Enter 10-digit mobile number"
-                />
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  10-Digit Registered Mobile Number
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-stone-400 absolute left-3.5 top-3 pointer-events-none" />
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="98765 22001"
+                    className="w-full bg-[#fffdfa] border border-orange-200/90 rounded-xl pl-10 pr-4 py-2.5 text-xs text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  />
+                </div>
                 {!otpSent && (
                   <button
                     type="button"
                     onClick={handleSendOtp}
                     disabled={isLoading || !phone}
-                    className="mt-2 w-full py-2 bg-stone-100 hover:bg-orange-50 text-orange-700 font-bold text-xs rounded-xl border border-orange-200 transition"
+                    className="mt-2 w-full py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-xs rounded-xl border border-orange-200 transition"
                   >
-                    Send 4-Digit OTP
+                    Send 4-Digit Verification OTP
                   </button>
                 )}
               </div>
 
               {otpSent && (
                 <div className="space-y-3 pt-1">
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between">
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between">
                     <span>
                       <span className="font-bold">Demo OTP:</span> Use <strong>1234</strong>
                     </span>
-                    <span className="text-[10px] text-amber-600 font-medium">Valid for 10 mins</span>
+                    <span className="text-[10px] text-amber-700 font-semibold">Valid 10 mins</span>
                   </div>
-                  <Input
-                    label="Enter Verification Code"
-                    type="text"
-                    maxLength={4}
-                    required
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="1234"
-                    className="text-center text-lg tracking-widest font-mono"
-                  />
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1 text-center">
+                      Enter 4-Digit Code
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      required
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="1234"
+                      className="w-full text-center text-xl tracking-widest font-mono py-2.5 rounded-xl border border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white"
+                    />
+                  </div>
                   <Button
                     type="submit"
                     isLoading={isLoading}
                     className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-md"
                   >
-                    Verify & Enter
+                    Verify & Continue
                     <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>
                 </div>
@@ -471,7 +541,7 @@ function LoginForm() {
             </form>
           )}
 
-          {/* Google Sign In (Customer only) */}
+          {/* Google Sign In for Customers */}
           {activeTab === "customer" && (
             <>
               <div className="relative my-2">
@@ -512,17 +582,17 @@ function LoginForm() {
             </>
           )}
 
-          {/* 1-Click Fast Development Demo Credentials Switcher */}
+          {/* Quick Development Autofill Switcher for Verification Testing */}
           <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-1.5">
             <div className="flex items-center justify-between text-[11px] font-bold text-stone-600">
-              <span>Quick Test Credentials:</span>
-              <span className="text-[10px] text-orange-600">Click to autofill & test</span>
+              <span>Test Account Autofill:</span>
+              <span className="text-[10px] text-orange-600">Click to autofill & verify</span>
             </div>
 
             {activeTab === "customer" && (
               <button
                 type="button"
-                onClick={() => handleQuickDemoLogin("customer@homeplate.app", "Customer (Rahul Sharma)")}
+                onClick={() => handleAutofill("customer@homeplate.app", "Customer (Rahul Sharma)")}
                 className="w-full py-1.5 px-2.5 bg-white hover:bg-orange-50 border border-stone-200 text-stone-800 rounded-lg text-xs font-semibold transition flex items-center justify-between"
               >
                 <span>Customer: customer@homeplate.app</span>
@@ -534,26 +604,26 @@ function LoginForm() {
               <div className="grid grid-cols-1 gap-1">
                 <button
                   type="button"
-                  onClick={() => handleQuickDemoLogin("seller@homeplate.app", "Approved Cook (Lakshmi Devi)")}
+                  onClick={() => handleAutofill("seller@homeplate.app", "Approved Cook (Lakshmi Devi)")}
                   className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-semibold transition flex items-center justify-between"
                 >
-                  <span>1. Approved Seller (Lakshmi Devi)</span>
+                  <span>1. Approved Seller (Lakshmi Devi &rarr; Dashboard)</span>
                   <span className="text-[10px] font-bold text-emerald-600">&rarr;</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickDemoLogin("seller.pending@homeplate.app", "Pending Cook (Radhika Reddy)")}
+                  onClick={() => handleAutofill("seller.pending@homeplate.app", "Pending Cook (Radhika Reddy)")}
                   className="w-full py-1.5 px-2.5 bg-white hover:bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] font-semibold transition flex items-center justify-between"
                 >
-                  <span>2. Pending Verification (Radhika Reddy)</span>
+                  <span>2. Pending Verification (Radhika Reddy &rarr; Status Tracker)</span>
                   <span className="text-[10px] font-bold text-amber-600">&rarr;</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickDemoLogin("seller.rejected@homeplate.app", "Rejected Cook (Sujatha Rao)")}
+                  onClick={() => handleAutofill("seller.rejected@homeplate.app", "Rejected Cook (Sujatha Rao)")}
                   className="w-full py-1.5 px-2.5 bg-white hover:bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-[11px] font-semibold transition flex items-center justify-between"
                 >
-                  <span>3. Action Needed / Rejected (Sujatha Rao)</span>
+                  <span>3. Action Needed / Rejected (Sujatha Rao &rarr; Revision Info)</span>
                   <span className="text-[10px] font-bold text-rose-600">&rarr;</span>
                 </button>
               </div>
@@ -562,31 +632,31 @@ function LoginForm() {
             {activeTab === "admin" && (
               <button
                 type="button"
-                onClick={() => handleQuickDemoLogin("admin@homeplate.app", "Administrator")}
+                onClick={() => handleAutofill("admin@homeplate.app", "Platform Administrator")}
                 className="w-full py-1.5 px-2.5 bg-slate-900 hover:bg-slate-800 text-slate-100 rounded-lg text-xs font-semibold transition flex items-center justify-between"
               >
-                <span>admin@homeplate.app</span>
+                <span>admin@homeplate.app (Admin Desk &rarr; /admin)</span>
                 <span className="text-[10px] text-amber-400 font-bold">&rarr;</span>
               </button>
             )}
           </div>
 
           {/* Registration Links */}
-          <div className="text-center pt-2 space-y-2 border-t border-stone-100">
+          <div className="text-center pt-2 space-y-1.5 border-t border-stone-100">
             {activeTab === "customer" && (
               <p className="text-xs text-stone-600">
-                Don&apos;t have an account?{" "}
+                New to Home Plate?{" "}
                 <Link href="/register" className="font-bold text-orange-600 hover:text-orange-700 hover:underline">
-                  Sign up for free
+                  Create customer account
                 </Link>
               </p>
             )}
 
             {activeTab === "seller" && (
               <p className="text-xs text-stone-600">
-                New Home Cook?{" "}
+                Want to sell your homemade food?{" "}
                 <Link href="/seller/register" className="font-bold text-orange-600 hover:text-orange-700 hover:underline">
-                  Register your kitchen here &rarr;
+                  Register as a Home Cook &rarr;
                 </Link>
               </p>
             )}
@@ -596,7 +666,6 @@ function LoginForm() {
     </div>
   );
 }
-
 
 export default function LoginPage() {
   return (
