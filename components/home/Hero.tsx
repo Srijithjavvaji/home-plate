@@ -20,13 +20,13 @@ export const Hero: React.FC = () => {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#271b15] tracking-tight leading-[1.12]">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-poppins font-semibold text-[#271b15] tracking-tight leading-[1.15]">
               Homemade Goodness, <br />
               <span className="text-orange-600">Delivered with Love.</span>
             </h1>
 
             {/* Subheading */}
-            <p className="text-base sm:text-lg text-[#634537] max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+            <p className="text-base sm:text-lg font-lato text-[#634537] max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
               Connect with talented home cooks and homemakers across Hyderabad. Discover sun-cured Andhra pickles, stone-ground podis, pure cow ghee sweets, and wholesome traditional snacks crafted without industrial additives.
             </p>
 

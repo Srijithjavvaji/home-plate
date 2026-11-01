@@ -35,11 +35,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700&family=Poppins:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="flex flex-col min-h-screen font-sans bg-[#fffdfa] text-gray-900">
+      <body className="flex flex-col min-h-screen font-lato bg-[#fffdfa] text-gray-900">
         <LanguageProvider>
           <AuthProvider>
             <CartProvider>

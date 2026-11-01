@@ -119,7 +119,7 @@ export const FoodCard: React.FC<FoodCardProps> = ({ food }) => {
 
         {/* Food Name */}
         <Link href={`/foods/${food.id}`} className="group-hover:text-orange-700 transition">
-          <h3 className="font-bold text-gray-900 text-base line-clamp-1 leading-snug">
+          <h3 className="font-poppins font-semibold text-gray-900 text-base line-clamp-1 leading-snug product-name">
             {food.name}
           </h3>
         </Link>

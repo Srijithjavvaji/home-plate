@@ -37,8 +37,14 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
-        display: ["var(--font-display)", "Outfit", "system-ui", "sans-serif"],
+        sans: ["var(--font-lato)", "'Lato'", "'Noto Sans Telugu'", "system-ui", "-apple-system", "sans-serif"],
+        body: ["var(--font-lato)", "'Lato'", "'Noto Sans Telugu'", "sans-serif"],
+        heading: ["var(--font-poppins)", "'Poppins'", "'Noto Sans Telugu'", "sans-serif"],
+        poppins: ["var(--font-poppins)", "'Poppins'", "'Noto Sans Telugu'", "sans-serif"],
+        lato: ["var(--font-lato)", "'Lato'", "'Noto Sans Telugu'", "sans-serif"],
+        promotional: ["var(--font-playfair)", "'Playfair Display'", "Georgia", "serif"],
+        playfair: ["var(--font-playfair)", "'Playfair Display'", "Georgia", "serif"],
+        telugu: ["'Noto Sans Telugu'", "'Gautami'", "sans-serif"],
       },
       boxShadow: {
         subtle: "0 2px 10px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02)",

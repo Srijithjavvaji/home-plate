@@ -96,17 +96,23 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="text-orange-300/80">Role:</span>
               <div className="inline-flex rounded-md bg-black/30 p-0.5 border border-white/10">
-                {(["customer", "seller", "admin"] as UserRole[]).map((role) => (
+                {(["guest", "customer", "seller", "admin"] as const).map((roleOption) => (
                   <button
-                    key={role}
-                    onClick={() => switchRole(role)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize transition ${
-                      user?.role === role
-                        ? "bg-orange-600 text-white shadow-sm"
+                    key={roleOption}
+                    onClick={() => {
+                      if (roleOption === "guest") {
+                        logout();
+                      } else {
+                        switchRole(roleOption as UserRole);
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-poppins font-medium capitalize transition ${
+                      (roleOption === "guest" && !user) || (user && user.role === roleOption)
+                        ? "bg-orange-600 text-white shadow-sm font-bold"
                         : "text-orange-200 hover:text-white"
                     }`}
                   >
-                    {role === "seller" ? "Home Cook" : role}
+                    {roleOption === "seller" ? "Home Cook" : roleOption === "guest" ? "Guest (Unsigned)" : roleOption}
                   </button>
                 ))}
               </div>
@@ -300,13 +306,15 @@ export const Navbar: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:text-orange-700 transition"
+                  id="nav-login-btn"
+                  className="px-4 py-2 text-xs font-poppins font-medium text-stone-800 hover:text-orange-600 hover:bg-orange-50/80 rounded-xl border border-orange-200/90 transition shadow-xs"
                 >
                   Log in
                 </Link>
                 <Link
                   href="/register"
-                  className="px-3.5 py-1.5 text-xs font-semibold bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition shadow-sm"
+                  id="nav-signup-btn"
+                  className="px-4 py-2 text-xs font-poppins font-medium bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition shadow-sm shadow-orange-600/30"
                 >
                   Sign up
                 </Link>

@@ -20,7 +20,7 @@ export const BecomeCookCTA: React.FC = () => {
               Cook From Your Home Kitchen, Earn With Pride.
             </h2>
 
-            <p className="text-emerald-100 text-sm sm:text-base leading-relaxed">
+            <p className="text-emerald-100 font-lato text-sm sm:text-base leading-relaxed">
               Join hundreds of homemakers, mothers, and passionate chefs who earn up to ₹65,000/month by serving authentic homemade specialties to their neighborhoods. We handle deliveries, payments, and packaging.
             </p>
 
